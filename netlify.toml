@@ -1,0 +1,17 @@
+[build]
+  # Publish the root directory (index.html is here)
+  publish = "."
+
+# Redirect all 404s to index.html (for potential future SPA routing)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

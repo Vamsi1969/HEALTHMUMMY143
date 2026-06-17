@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="login-modal" class="login-modal">
+        <div class="login-card">
+            <h2>Welcome to Health Mummy</h2>
+            <p>Please sign in to continue</p>
+            
+            <div id="g_id_onload"
+                 data-client_id="143695571657-2bqbi876s0nrrpg7e2lotcnmlh5b0f0o.apps.googleusercontent.com"
+                 data-context="signin"
+                 data-ux_mode="popup"
+                 data-callback="handleCredentialResponse"
+                 data-auto_prompt="false">
+            </div>
+            
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-shape="rectangular"
+                 data-theme="outline"
+                 data-text="signin_with"
+                 data-size="large"
+                 data-logo_alignment="left"
+                 style="display: flex; justify-content: center;">
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container" id="main-app" style="display: none;">
+        <header class="app-header">
+            <button id="back-btn" class="icon-btn" style="display: none;">
+                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            </button>
+            <div class="header-title">
+                <h1>Health Mummy</h1>
+                <p>Your personal well-being guide</p>
+            </div>
+            <div style="width: 24px;"></div> <!-- Spacer for flex alignment -->
+        </header>
+
+        <!-- Dashboard Menu -->
+        <main id="dashboard-section" class="view-section" style="display: flex;">
+            <div class="dashboard-grid">
+                <div class="feature-card" id="card-chat">
+                    <div class="card-icon">💬</div>
+                    <h3>Health Assistant</h3>
+                    <p>Chat for advice on symptoms</p>
+                </div>
+                <div class="feature-card" id="card-hospital">
+                    <div class="card-icon">🏥</div>
+                    <h3>Nearby Hospitals</h3>
+                    <p>Find urgent care near you</p>
+                </div>
+                <div class="feature-card" id="card-blood">
+                    <div class="card-icon">🩸</div>
+                    <h3>Blood Banks</h3>
+                    <p>Find local blood donation centers</p>
+                </div>
+                <div class="feature-card" id="card-bmi">
+                    <div class="card-icon">⚖️</div>
+                    <h3>BMI Calculator</h3>
+                    <p>Check your Body Mass Index</p>
+                </div>
+                <div class="feature-card" id="card-emergency">
+                    <div class="card-icon">🚨</div>
+                    <h3>Emergency</h3>
+                    <p>Important contact numbers</p>
+                </div>
+                <div class="feature-card" id="card-breathe">
+                    <div class="card-icon">🧘</div>
+                    <h3>Calm Zone</h3>
+                    <p>Guided breathing exercise</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- BMI Calculator Section -->
+        <main id="bmi-section" class="view-section" style="display: none;">
+            <div class="tool-container">
+                <h2>BMI Calculator</h2>
+                <div class="input-group">
+                    <label>Weight (kg)</label>
+                    <input type="number" id="bmi-weight" placeholder="e.g. 70">
+                </div>
+                <div class="input-group">
+                    <label>Height (cm)</label>
+                    <input type="number" id="bmi-height" placeholder="e.g. 175">
+                </div>
+                <button id="calc-bmi-btn" class="primary-btn">Calculate</button>
+                <div id="bmi-result" class="result-box" style="display: none;"></div>
+            </div>
+        </main>
+
+        <!-- Emergency Contacts Section -->
+        <main id="emergency-section" class="view-section" style="display: none;">
+            <div class="tool-container">
+                <h2>Emergency Contacts</h2>
+                <div class="contact-list">
+                    <div class="contact-card">
+                        <h3>General Emergency</h3>
+                        <a href="tel:911" class="tel-link">911</a>
+                    </div>
+                    <div class="contact-card">
+                        <h3>Poison Control</h3>
+                        <a href="tel:1-800-222-1222" class="tel-link">1-800-222-1222</a>
+                    </div>
+                    <div class="contact-card">
+                        <h3>Mental Health Crisis</h3>
+                        <a href="tel:988" class="tel-link">988</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Calm Zone / Breathing Section -->
+        <main id="breathe-section" class="view-section" style="display: none;">
+            <div class="breathe-container">
+                <h2 id="breathe-instruction">Tap Start to Begin</h2>
+                <div class="breathe-circle-wrapper">
+                    <div class="breathe-circle" id="breathe-circle">
+                        <span id="breathe-timer"></span>
+                    </div>
+                </div>
+                <button id="breathe-start-btn" class="primary-btn">Start</button>
+            </div>
+        </main>
+
+        <!-- Chat Section -->
+        <main id="chat-section" class="chat-container view-section" style="display: none;">
+            <div id="chat-box" class="chat-box">
+                <div class="message bot-message">
+                    Hello! I'm your Health Assistant. Tell me how you're feeling today or ask me a health-related question.
+                </div>
+            </div>
+            
+            <div class="input-area">
+                <input type="text" id="user-input" placeholder="Type your symptoms or question here..." autocomplete="off">
+                <button id="send-btn">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
