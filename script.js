@@ -44,6 +44,137 @@ const RESPONSES = {
     "default": "I'm your Health Mummy assistant covering <strong>150+ health conditions</strong> — fever, diabetes, BP, cold, flu, asthma, heart, skin, eyes, dental, pregnancy, mental health, first aid, cancer awareness, and much more. Just type your symptom! For serious concerns, please consult a healthcare professional."
 };
 
+// --- Browser Text-to-Speech (SpeechSynthesis) ---
+// Uses the browser's built-in TTS — free, unlimited, no API key needed
+const TTS_ENABLED = true;
+
+function speakText(text) {
+    // Strip HTML tags for cleaner speech
+    const cleanText = text.replace(/<[^>]*>/g, '').trim();
+    if (!cleanText) return Promise.resolve(false);
+    
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    
+    return new Promise((resolve) => {
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'en-US';
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        
+        // Try to find a natural voice
+        const trySelectVoice = () => {
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length === 0) {
+                // Voices not loaded yet — wait for them
+                window.speechSynthesis.onvoiceschanged = () => {
+                    window.speechSynthesis.onvoiceschanged = null;
+                    trySelectVoice();
+                };
+                return;
+            }
+            const preferredVoice = voices.find(v =>
+                v.name.includes('Samantha') ||
+                v.name.includes('Google UK Female') ||
+                v.name.includes('Microsoft Zira') ||
+                v.name.includes('Female')
+            );
+            if (preferredVoice) utterance.voice = preferredVoice;
+            window.speechSynthesis.speak(utterance);
+        };
+        trySelectVoice();
+        
+        utterance.onend = () => resolve(true);
+        utterance.onerror = (e) => {
+            console.warn('SpeechSynthesis error:', e);
+            resolve(false);
+        };
+        
+        // If no voices needed selection, just speak
+        if (!utterance.voice) {
+            window.speechSynthesis.speak(utterance);
+        }
+    });
+}
+
+// --- Voice Input (SpeechRecognition) ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isListening = false;
+
+function startVoiceInput() {
+    if (!SpeechRecognition) {
+        alert('Voice input is not supported in this browser. Please use Chrome or Edge.');
+        return;
+    }
+    
+    if (isListening) {
+        // Manual stop — clear input so auto-send doesn't fire with partial text
+        userInput.value = '';
+        stopVoiceInput();
+        return;
+    }
+    
+    recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    
+    const micBtn = document.getElementById('mic-btn');
+    
+    recognition.onstart = () => {
+        isListening = true;
+        micBtn.classList.add('listening');
+        micBtn.innerHTML = '🎤';
+        micBtn.title = 'Listening... Click to stop';
+        userInput.placeholder = 'Listening...';
+    };
+    
+    recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+        }
+        userInput.value = transcript;
+        // Auto-grow the transcript as user speaks
+        userInput.scrollLeft = userInput.scrollWidth;
+    };
+    
+    recognition.onend = () => {
+        isListening = false;
+        micBtn.classList.remove('listening');
+        micBtn.innerHTML = '🎤';
+        micBtn.title = 'Click to speak';
+        userInput.placeholder = 'Type your symptoms...';
+        
+        // Auto-send if there's text
+        if (userInput.value.trim()) {
+            handleSend();
+        }
+    };
+    
+    recognition.onerror = (event) => {
+        console.warn('Speech recognition error:', event.error);
+        isListening = false;
+        micBtn.classList.remove('listening');
+        micBtn.innerHTML = '🎤';
+        micBtn.title = 'Click to speak';
+        userInput.placeholder = 'Type your symptoms...';
+        
+        if (event.error === 'not-allowed') {
+            alert('Microphone access denied. Please allow microphone permissions in your browser settings.');
+        }
+    };
+    
+    recognition.start();
+}
+
+function stopVoiceInput() {
+    if (recognition) {
+        recognition.stop();
+    }
+}
+
 // --- Chat Elements ---
 const chatBox = document.getElementById('chat-box');
 const userInput = document.getElementById('user-input');
@@ -122,7 +253,29 @@ function addMessage(message, isUser = false) {
     const msgDiv = document.createElement('div');
     msgDiv.classList.add('message');
     msgDiv.classList.add(isUser ? 'user-message' : 'bot-message');
-    msgDiv.innerHTML = message;
+    
+    const msgContent = document.createElement('div');
+    msgContent.className = 'msg-content';
+    msgContent.innerHTML = message;
+    msgDiv.appendChild(msgContent);
+    
+    // Add speak button for bot messages
+    if (!isUser && TTS_ENABLED) {
+        const speakBtn = document.createElement('button');
+        speakBtn.className = 'speak-btn';
+        speakBtn.innerHTML = '🔊';
+        speakBtn.title = 'Listen to this response';
+        speakBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            speakBtn.disabled = true;
+            speakBtn.innerHTML = '🔊 <span class="speaking-dots">...</span>';
+            const success = await speakText(message);
+            speakBtn.disabled = false;
+            speakBtn.innerHTML = success ? '🔊✅' : '🔊❌';
+            setTimeout(() => { speakBtn.innerHTML = '🔊'; }, 2000);
+        });
+        msgDiv.appendChild(speakBtn);
+    }
     
     chatBox.appendChild(msgDiv);
     chatBox.scrollTop = chatBox.scrollHeight;
@@ -186,14 +339,24 @@ userInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleSend();
 });
 
-// Show AI status indicator in chat header
+// --- Voice Input Event Listener ---
+const micBtn = document.getElementById('mic-btn');
+if (micBtn) {
+    micBtn.addEventListener('click', startVoiceInput);
+}
+
+// Show AI status & voice features indicator in chat header
 (function showAIStatus() {
     const headerTitle = document.querySelector('.header-title p');
     if (headerTitle) {
-        const status = HAS_AI
+        const aiStatus = HAS_AI
             ? `<span style="color: #4CAF50;">●</span> AI Online`
             : `<span style="color: #ffaa00;">●</span> Offline Mode`;
-        headerTitle.innerHTML = `Your personal well-being guide — ${status}`;
+        const supportsVoice = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+        const voiceStatus = supportsVoice
+            ? `<span style="color: #8B5CF6;"> 🎤 Voice</span>`
+            : '';
+        headerTitle.innerHTML = `Your personal well-being guide — ${aiStatus}${voiceStatus}`;
     }
 })();
 
@@ -231,6 +394,10 @@ document.getElementById('card-blood').addEventListener('click', () => {
 });
 
 document.getElementById('card-breathe').addEventListener('click', () => showSection('breathe-section'));
+
+document.getElementById('card-water').addEventListener('click', () => showSection('water-section'));
+document.getElementById('card-symptoms').addEventListener('click', () => showSection('symptom-section'));
+document.getElementById('card-medicine').addEventListener('click', () => showSection('medicine-section'));
 
 // ============================================================
 // Calm Zone — Breathing Exercise
@@ -383,3 +550,502 @@ window.handleCredentialResponse = function(response) {
         }, 500);
     }, 500);
 };
+
+// ============================================================
+// ☀️ Health Tips of the Day
+// ============================================================
+const HEALTH_TIPS = [
+    "Drink at least 8 glasses of water daily to stay hydrated and maintain healthy skin.",
+    "Aim for 7-9 hours of sleep each night — your body repairs itself during sleep.",
+    "Walk 10,000 steps a day to improve cardiovascular health and boost mood.",
+    "Include colorful vegetables in every meal for a wide range of nutrients.",
+    "Practice deep breathing for 2 minutes when stressed — inhale 4s, hold 4s, exhale 4s.",
+    "Limit screen time 30 minutes before bed for better sleep quality.",
+    "Eat protein with every meal to maintain muscle mass and feel full longer.",
+    "Wash your hands frequently — it's the #1 way to prevent infection.",
+    "Take a 5-minute stretch break every hour if you sit for long periods.",
+    "Vitamin D from 10-15 minutes of morning sunlight boosts immunity and mood.",
+    "Include fiber-rich foods like oats, beans, and apples for digestive health.",
+    "Reduce salt intake to maintain healthy blood pressure levels.",
+    "Practice gratitude — writing 3 things you're grateful for improves mental health.",
+    "Limit added sugar to less than 25g per day for optimal health.",
+    "Stay socially connected — strong relationships are linked to longer life.",
+    "Use proper posture: keep your back straight and shoulders relaxed while sitting.",
+    "Eat fatty fish like salmon twice a week for omega-3 fatty acids.",
+    "Replace sugary drinks with water or herbal tea to cut empty calories.",
+    "Take the stairs instead of the elevator for extra daily activity.",
+    "Laugh often — it reduces stress hormones and boosts immune function.",
+    "Get regular health check-ups even when you feel fine — prevention is key.",
+    "Include probiotics (yogurt, kefir) for gut health and better digestion.",
+    "Limit alcohol consumption — moderate means up to 1 drink per day for women, 2 for men.",
+    "Use sunscreen with SPF 30+ even on cloudy days to protect your skin.",
+    "Practice mindfulness or meditation for 5-10 minutes daily to reduce anxiety.",
+    "Eat breakfast within 2 hours of waking to kickstart your metabolism.",
+    "Keep a consistent sleep schedule — same bedtime and wake time daily.",
+    "Include iron-rich foods like spinach, lentils, and lean red meat in your diet.",
+    "Stay hydrated before, during, and after exercise for better performance.",
+    "Take regular breaks from screens using the 20-20-20 rule: look 20 feet away for 20 seconds every 20 minutes."
+];
+
+function getDailyTip() {
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    // Simple hash of date string for consistent daily tip
+    let hash = 0;
+    for (let i = 0; i < dateStr.length; i++) {
+        hash = ((hash << 5) - hash) + dateStr.charCodeAt(i);
+        hash |= 0;
+    }
+    const index = Math.abs(hash) % HEALTH_TIPS.length;
+    return HEALTH_TIPS[index];
+}
+
+function showHealthTip() {
+    const tipEl = document.getElementById('health-tip-text');
+    if (tipEl) {
+        tipEl.textContent = getDailyTip();
+    }
+}
+
+// Handle next tip button
+const tipNextBtn = document.getElementById('tip-next-btn');
+if (tipNextBtn) {
+    tipNextBtn.addEventListener('click', () => {
+        const tipEl = document.getElementById('health-tip-text');
+        if (tipEl) {
+            // Show a random tip on click (different from daily)
+            let idx;
+            do {
+                idx = Math.floor(Math.random() * HEALTH_TIPS.length);
+            } while (HEALTH_TIPS.length > 1 && HEALTH_TIPS[idx] === tipEl.textContent);
+            tipEl.textContent = HEALTH_TIPS[idx];
+            // Spin animation
+            tipNextBtn.style.transform = 'rotate(180deg)';
+            setTimeout(() => { tipNextBtn.style.transform = 'rotate(0deg)'; }, 300);
+        }
+    });
+}
+
+// Also show tip when returning to dashboard
+const dashboardSection = document.getElementById('dashboard-section');
+if (dashboardSection) {
+    const observer = new MutationObserver(() => {
+        if (dashboardSection.style.display !== 'none') {
+            showHealthTip();
+        }
+    });
+    observer.observe(dashboardSection, { attributes: true, attributeFilter: ['style'] });
+}
+
+// ============================================================
+// 💧 Water Intake Tracker
+// ============================================================
+const WATER_GOAL = 8;
+const WATER_STORAGE_KEY = 'healthmummy_water';
+
+function getWaterData() {
+    const today = new Date().toISOString().split('T')[0];
+    const stored = localStorage.getItem(WATER_STORAGE_KEY);
+    if (stored) {
+        try {
+            const data = JSON.parse(stored);
+            if (data.date === today) return data.count;
+        } catch (e) { /* ignore */ }
+    }
+    return 0;
+}
+
+function saveWaterData(count) {
+    const today = new Date().toISOString().split('T')[0];
+    localStorage.setItem(WATER_STORAGE_KEY, JSON.stringify({ date: today, count: count }));
+}
+
+function updateWaterUI() {
+    const count = getWaterData();
+    const percent = Math.min(100, Math.round((count / WATER_GOAL) * 100));
+    const circumference = 326.73; // 2 * PI * 52
+    const offset = circumference - (percent / 100) * circumference;
+    
+    const countEl = document.getElementById('water-count');
+    const percentEl = document.getElementById('water-percent');
+    const ringFill = document.getElementById('water-ring-fill');
+    const motivationEl = document.getElementById('water-motivation');
+    
+    if (countEl) countEl.textContent = count;
+    if (percentEl) percentEl.textContent = percent + '%';
+    if (ringFill) ringFill.style.strokeDashoffset = offset;
+    
+    if (motivationEl) {
+        if (count === 0) motivationEl.textContent = '🥤 Start drinking water! Your body needs it.';
+        else if (count < 4) motivationEl.textContent = '👍 Good start! Keep going, you\'re ' + (WATER_GOAL - count) + ' glasses away.';
+        else if (count < 8) motivationEl.textContent = '💪 Almost there! Just ' + (WATER_GOAL - count) + ' more glass' + (WATER_GOAL - count > 1 ? 'es' : '') + '!';
+        else if (count >= 8) motivationEl.textContent = '🎉 Awesome! You hit your water goal! Your body thanks you!';
+    }
+}
+
+function addWater(glasses) {
+    let count = getWaterData();
+    count = Math.min(count + glasses, 20); // Cap at 20
+    saveWaterData(count);
+    updateWaterUI();
+}
+
+function resetWater() {
+    saveWaterData(0);
+    updateWaterUI();
+}
+
+// Water event listeners
+document.getElementById('water-add-1')?.addEventListener('click', () => addWater(1));
+document.getElementById('water-add-2')?.addEventListener('click', () => addWater(2));
+document.getElementById('water-reset')?.addEventListener('click', resetWater);
+
+// Update water when section is shown
+document.getElementById('card-water')?.addEventListener('click', () => {
+    setTimeout(updateWaterUI, 50);
+});
+
+// ============================================================
+// 📋 Symptom Journal
+// ============================================================
+const SYMPTOM_STORAGE_KEY = 'healthmummy_symptoms';
+
+function getSymptoms() {
+    try {
+        return JSON.parse(localStorage.getItem(SYMPTOM_STORAGE_KEY)) || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveSymptoms(entries) {
+    localStorage.setItem(SYMPTOM_STORAGE_KEY, JSON.stringify(entries));
+}
+
+function renderSymptomHistory() {
+    const historyEl = document.getElementById('symptom-history');
+    if (!historyEl) return;
+    
+    const entries = getSymptoms();
+    
+    if (entries.length === 0) {
+        historyEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem;">No entries yet. Start logging your symptoms!</p>';
+        return;
+    }
+    
+    // Show most recent first
+    const sorted = [...entries].reverse();
+    historyEl.innerHTML = sorted.map(e => {
+        const severityLabel = ['', 'Mild', 'Moderate', 'Moderate', 'Severe', 'Very Severe'];
+        const severityColor = ['', '#4CAF50', '#8bc34a', '#ffaa00', '#ff7043', '#ff4444'];
+        return `
+            <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">${e.date}</span>
+                    <span style="font-size: 0.8rem; color: ${severityColor[e.severity] || '#888'}; font-weight: 600;">${severityLabel[e.severity] || 'Unknown'}</span>
+                </div>
+                <div style="font-weight: 600; font-size: 0.95rem;">${e.symptoms}</div>
+                ${e.notes ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">${e.notes}</div>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function saveSymptomEntry() {
+    const dateInput = document.getElementById('symptom-date');
+    const severityInput = document.getElementById('symptom-severity');
+    const symptomInput = document.getElementById('symptom-input');
+    const notesInput = document.getElementById('symptom-notes');
+    
+    if (!dateInput || !symptomInput) return;
+    
+    const date = dateInput.value || new Date().toISOString().split('T')[0];
+    const severity = parseInt(severityInput?.value || '3');
+    const symptoms = symptomInput.value.trim();
+    const notes = notesInput?.value.trim() || '';
+    
+    if (!symptoms) {
+        alert('Please enter at least one symptom.');
+        return;
+    }
+    
+    const entries = getSymptoms();
+    entries.push({ date, severity, symptoms, notes });
+    saveSymptoms(entries);
+    
+    // Clear form
+    symptomInput.value = '';
+    if (notesInput) notesInput.value = '';
+    
+    renderSymptomHistory();
+    
+    // Show brief success feedback
+    const btn = document.getElementById('symptom-save-btn');
+    if (btn) {
+        const originalText = btn.textContent;
+        btn.textContent = '✅ Saved!';
+        btn.style.background = '#4CAF50';
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.background = '';
+        }, 1500);
+    }
+}
+
+// Set today's date as default
+const symptomDateInput = document.getElementById('symptom-date');
+if (symptomDateInput) {
+    symptomDateInput.value = new Date().toISOString().split('T')[0];
+}
+
+// Severity slider sync
+const severitySlider = document.getElementById('symptom-severity');
+const severityLabel = document.getElementById('symptom-severity-label');
+if (severitySlider && severityLabel) {
+    severitySlider.addEventListener('input', () => {
+        const labels = ['', 'Mild', 'Moderate', 'Moderate', 'Severe', 'Very Severe'];
+        const val = parseInt(severitySlider.value);
+        severityLabel.textContent = labels[val] || val;
+    });
+}
+
+// Symptom journal event listeners
+document.getElementById('symptom-save-btn')?.addEventListener('click', saveSymptomEntry);
+
+// Render history when section is shown
+document.getElementById('card-symptoms')?.addEventListener('click', () => {
+    setTimeout(renderSymptomHistory, 50);
+});
+
+// ============================================================
+// 💊 Medicine Reminder
+// ============================================================
+const MED_STORAGE_KEY = 'healthmummy_medicines';
+
+function getMedicines() {
+    try {
+        return JSON.parse(localStorage.getItem(MED_STORAGE_KEY)) || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveMedicines(meds) {
+    localStorage.setItem(MED_STORAGE_KEY, JSON.stringify(meds));
+}
+
+function renderMedicines() {
+    const medList = document.getElementById('med-list');
+    if (!medList) return;
+    
+    const meds = getMedicines();
+    
+    if (meds.length === 0) {
+        medList.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem;">No medications added yet.</p>';
+        return;
+    }
+    
+    medList.innerHTML = meds.map((med, idx) => {
+        const takenToday = med.lastTaken && med.lastTaken === new Date().toISOString().split('T')[0];
+        const isOverdue = !takenToday && isTimePassed(med.time);
+        
+        let statusColor = '#888';
+        let statusText = '⏰ ' + med.time;
+        if (takenToday) {
+            statusColor = '#4CAF50';
+            statusText = '✅ Taken - ' + med.time;
+        } else if (isOverdue) {
+            statusColor = '#ff4444';
+            statusText = '⚠️ Overdue - ' + med.time;
+        }
+        
+        return `
+            <div style="background: ${takenToday ? 'rgba(76,175,80,0.08)' : 'rgba(255,255,255,0.05)'}; border: 1px solid ${takenToday ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.08)'}; border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; font-size: 0.95rem;">${med.name}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">${med.dosage || ''}</div>
+                    <div style="font-size: 0.8rem; color: ${statusColor}; font-weight: 500;">${statusText}</div>
+                </div>
+                <div style="display: flex; gap: 5px; align-items: center;">
+                    <button class="med-toggle-btn" data-index="${idx}" style="background: ${takenToday ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.1)'}; border: 1px solid ${takenToday ? '#4CAF50' : '#555'}; color: ${takenToday ? '#4CAF50' : '#aaa'}; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 1rem; transition: all 0.2s;">
+                        ${takenToday ? '✓' : '○'}
+                    </button>
+                    <button class="med-delete-btn" data-index="${idx}" style="background: transparent; border: none; color: #ff4444; cursor: pointer; font-size: 1.1rem; padding: 5px; opacity: 0.6; transition: opacity 0.2s;" title="Remove">✕</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Attach event listeners to medicine buttons
+    document.querySelectorAll('.med-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.index);
+            toggleMedication(idx);
+        });
+    });
+    
+    document.querySelectorAll('.med-delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.index);
+            deleteMedication(idx);
+        });
+    });
+}
+
+function isTimePassed(timeStr) {
+    if (!timeStr) return false;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const now = new Date();
+    const medTime = new Date();
+    medTime.setHours(hours, minutes, 0, 0);
+    return now > medTime;
+}
+
+function toggleMedication(index) {
+    const meds = getMedicines();
+    if (!meds[index]) return;
+    
+    const today = new Date().toISOString().split('T')[0];
+    if (meds[index].lastTaken === today) {
+        meds[index].lastTaken = ''; // Unmark
+    } else {
+        meds[index].lastTaken = today;
+    }
+    saveMedicines(meds);
+    renderMedicines();
+}
+
+function deleteMedication(index) {
+    if (!confirm('Remove this medication?')) return;
+    const meds = getMedicines();
+    meds.splice(index, 1);
+    saveMedicines(meds);
+    renderMedicines();
+}
+
+function addMedication() {
+    const nameInput = document.getElementById('med-name');
+    const dosageInput = document.getElementById('med-dosage');
+    const timeInput = document.getElementById('med-time');
+    const notifyInput = document.getElementById('med-notify');
+    
+    if (!nameInput || !timeInput) return;
+    
+    const name = nameInput.value.trim();
+    const dosage = dosageInput?.value.trim() || '';
+    const time = timeInput.value;
+    const notify = notifyInput?.checked || false;
+    
+    if (!name) {
+        alert('Please enter a medicine name.');
+        return;
+    }
+    
+    if (!time) {
+        alert('Please select a time.');
+        return;
+    }
+    
+    // Request notification permission if needed
+    if (notify && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+    
+    const meds = getMedicines();
+    meds.push({
+        name,
+        dosage,
+        time,
+        notify,
+        lastTaken: '',
+        id: Date.now(),
+        createdAt: new Date().toISOString()
+    });
+    saveMedicines(meds);
+    
+    // Clear form
+    nameInput.value = '';
+    if (dosageInput) dosageInput.value = '';
+    
+    renderMedicines();
+    
+    // Success feedback
+    const btn = document.getElementById('med-add-btn');
+    if (btn) {
+        btn.textContent = '✅ Added!';
+        setTimeout(() => { btn.textContent = '➕ Add Medicine'; }, 1500);
+    }
+    
+    // Schedule notification
+    if (notify && Notification.permission === 'granted') {
+        scheduleMedNotification(name, dosage, time);
+    }
+}
+
+function scheduleMedNotification(name, dosage, time) {
+    // Set a timeout for the notification
+    const [hours, minutes] = time.split(':').map(Number);
+    const now = new Date();
+    const scheduled = new Date();
+    scheduled.setHours(hours, minutes, 0, 0);
+    
+    let delay = scheduled - now;
+    if (delay < 0) {
+        // Already passed today, schedule for tomorrow
+        delay += 24 * 60 * 60 * 1000;
+    }
+    
+    setTimeout(() => {
+        if (Notification.permission === 'granted') {
+            new Notification('💊 Medicine Reminder', {
+                body: `Time to take ${name}${dosage ? ' (' + dosage + ')' : ''}`,
+                icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💊</text></svg>'
+            });
+        }
+    }, delay);
+}
+
+// Check and schedule notifications for saved medicines on page load
+function scheduleAllNotifications() {
+    if (Notification.permission !== 'granted') return;
+    const meds = getMedicines();
+    meds.forEach(med => {
+        if (med.notify) {
+            scheduleMedNotification(med.name, med.dosage, med.time);
+        }
+    });
+}
+
+// Medicine event listeners
+document.getElementById('med-add-btn')?.addEventListener('click', addMedication);
+
+// Render medicines when section is shown
+document.getElementById('card-medicine')?.addEventListener('click', () => {
+    setTimeout(renderMedicines, 50);
+});
+
+// Schedule notifications on startup
+if (Notification.permission === 'granted') {
+    scheduleAllNotifications();
+}
+
+// ============================================================
+// Initialize all features on page load
+// ============================================================
+(function initFeatures() {
+    // Water: set initial state
+    updateWaterUI();
+    
+    // Symptoms: set date if not set
+    if (symptomDateInput && !symptomDateInput.value) {
+        symptomDateInput.value = new Date().toISOString().split('T')[0];
+    }
+    
+    // Medicines: render if section exists
+    renderMedicines();
+    
+    // Health tip
+    showHealthTip();
+})();

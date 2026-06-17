@@ -470,3 +470,268 @@ color: var(--text-muted);
 margin-bottom: 30px;
 font-size: 0.95rem;
 }
+
+/* Speak Button (on bot messages) */
+.bot-message {
+display: flex;
+align-items: flex-start;
+gap: 8px;
+}
+.msg-content {
+flex: 1;
+}
+.speak-btn {
+background: rgba(139, 92, 246, 0.15);
+border: 1px solid rgba(139, 92, 246, 0.3);
+color: #a78bfa;
+border-radius: 50%;
+width: 32px;
+height: 32px;
+font-size: 0.85rem;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: all 0.2s;
+flex-shrink: 0;
+margin-top: 2px;
+}
+.speak-btn:hover {
+background: rgba(139, 92, 246, 0.3);
+border-color: rgba(139, 92, 246, 0.6);
+transform: scale(1.1);
+}
+.speak-btn:active {
+transform: scale(0.9);
+}
+.speak-btn:disabled {
+opacity: 0.5;
+cursor: wait;
+}
+.speaking-dots {
+font-size: 0.6rem;
+animation: pulse 0.8s infinite;
+}
+@keyframes pulse {
+0%, 100% { opacity: 0.3; }
+50% { opacity: 1; }
+}
+
+/* Microphone Input Button */
+.input-icon-btn {
+background: transparent;
+border: 1px solid #444;
+color: #aaa;
+border-radius: 50%;
+width: 45px;
+height: 45px;
+font-size: 1.2rem;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: all 0.3s;
+flex-shrink: 0;
+}
+.input-icon-btn:hover {
+border-color: var(--primary-color);
+color: #fff;
+background: rgba(76, 175, 80, 0.1);
+}
+.input-icon-btn.listening {
+border-color: #ff4444;
+color: #ff4444;
+background: rgba(255, 68, 68, 0.15);
+animation: micPulse 1s infinite;
+box-shadow: 0 0 12px rgba(255, 68, 68, 0.3);
+}
+@keyframes micPulse {
+0%, 100% { transform: scale(1); box-shadow: 0 0 12px rgba(255, 68, 68, 0.3); }
+50% { transform: scale(1.1); box-shadow: 0 0 20px rgba(255, 68, 68, 0.5); }
+}
+
+/* ======================================== */
+/* ☀️ Health Tips Banner */
+/* ======================================== */
+.health-tip-banner {
+display: flex;
+align-items: center;
+gap: 12px;
+background: linear-gradient(135deg, rgba(255, 193, 7, 0.12), rgba(255, 152, 0, 0.06));
+border: 1px solid rgba(255, 193, 7, 0.25);
+border-radius: 12px;
+padding: 14px 16px;
+margin-top: 18px;
+width: 100%;
+transition: all 0.3s ease;
+}
+.health-tip-banner:hover {
+border-color: rgba(255, 193, 7, 0.4);
+background: linear-gradient(135deg, rgba(255, 193, 7, 0.18), rgba(255, 152, 0, 0.1));
+}
+.tip-icon {
+font-size: 1.8rem;
+flex-shrink: 0;
+}
+.tip-content {
+flex: 1;
+font-size: 0.85rem;
+color: #e0e0e0;
+line-height: 1.5;
+}
+.tip-next-btn {
+background: rgba(255, 255, 255, 0.08);
+border: 1px solid rgba(255, 255, 255, 0.15);
+color: #ccc;
+border-radius: 50%;
+width: 36px;
+height: 36px;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 1.2rem;
+transition: all 0.3s;
+flex-shrink: 0;
+}
+.tip-next-btn:hover {
+background: rgba(255, 255, 255, 0.15);
+border-color: rgba(255, 193, 7, 0.5);
+color: #ffc107;
+}
+
+/* ======================================== */
+/* 💧 Water Intake Tracker */
+/* ======================================== */
+.water-progress-container {
+position: relative;
+width: 140px;
+height: 140px;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+.water-ring {
+position: absolute;
+width: 100%;
+height: 100%;
+transform: rotate(-90deg);
+}
+.water-ring-bg {
+fill: none;
+stroke: rgba(255, 255, 255, 0.08);
+stroke-width: 8;
+}
+.water-ring-fill {
+fill: none;
+stroke: #4fc3f7;
+stroke-width: 8;
+stroke-linecap: round;
+transition: stroke-dashoffset 0.6s ease;
+}
+.water-ring-text {
+font-weight: 700;
+font-size: 1.8rem;
+color: #4fc3f7;
+text-align: center;
+line-height: 1;
+}
+.secondary-btn {
+background: transparent;
+border: 1px solid #555;
+color: var(--text-muted);
+padding: 10px 20px;
+border-radius: 8px;
+font-size: 0.9rem;
+cursor: pointer;
+transition: all 0.2s;
+}
+.secondary-btn:hover {
+border-color: #888;
+color: #fff;
+background: rgba(255, 255, 255, 0.05);
+}
+
+/* ======================================== */
+/* 📋 Symptom Journal */
+/* ======================================== */
+#symptom-severity {
+-webkit-appearance: none;
+appearance: none;
+height: 6px;
+background: #444;
+border-radius: 3px;
+outline: none;
+}
+#symptom-severity::-webkit-slider-thumb {
+-webkit-appearance: none;
+appearance: none;
+width: 20px;
+height: 20px;
+border-radius: 50%;
+background: var(--primary-color);
+cursor: pointer;
+border: 2px solid #fff;
+box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+#symptom-severity::-moz-range-thumb {
+width: 20px;
+height: 20px;
+border-radius: 50%;
+background: var(--primary-color);
+cursor: pointer;
+border: 2px solid #fff;
+}
+
+/* ======================================== */
+/* 💊 Medicine Reminder */
+/* ======================================== */
+/* Toggle Switch */
+.toggle-switch {
+position: relative;
+display: inline-block;
+width: 44px;
+height: 24px;
+}
+.toggle-switch input {
+opacity: 0;
+width: 0;
+height: 0;
+}
+.toggle-slider {
+position: absolute;
+cursor: pointer;
+top: 0;
+left: 0;
+right: 0;
+bottom: 0;
+background-color: #444;
+transition: 0.3s;
+border-radius: 24px;
+}
+.toggle-slider:before {
+position: absolute;
+content: "";
+height: 18px;
+width: 18px;
+left: 3px;
+bottom: 3px;
+background-color: white;
+transition: 0.3s;
+border-radius: 50%;
+}
+.toggle-switch input:checked + .toggle-slider {
+background-color: var(--primary-color);
+}
+.toggle-switch input:checked + .toggle-slider:before {
+transform: translateX(20px);
+}
+
+/* Medicine action buttons hover effects */
+.med-toggle-btn:hover {
+transform: scale(1.15);
+}
+.med-delete-btn:hover {
+opacity: 1 !important;
+transform: scale(1.2);
+}

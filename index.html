@@ -80,6 +80,35 @@
                     <h3>Calm Zone</h3>
                     <p>Guided breathing exercise</p>
                 </div>
+                <div class="feature-card" id="card-water">
+                    <div class="card-icon">💧</div>
+                    <h3>Water Tracker</h3>
+                    <p>Track your daily water intake</p>
+                </div>
+                <div class="feature-card" id="card-symptoms">
+                    <div class="card-icon">📋</div>
+                    <h3>Symptom Journal</h3>
+                    <p>Log & track your symptoms</p>
+                </div>
+                <div class="feature-card" id="card-medicine">
+                    <div class="card-icon">💊</div>
+                    <h3>Medicine Reminder</h3>
+                    <p>Never miss your medications</p>
+                </div>
+                <div class="feature-card" id="card-health-tips" style="display: none;">
+                    <div class="card-icon">☀️</div>
+                    <h3>Health Tips</h3>
+                    <p>Daily wellness tips</p>
+                </div>
+            </div>
+            
+            <!-- Health Tip Banner on Dashboard -->
+            <div id="health-tip-banner" class="health-tip-banner">
+                <div class="tip-icon">☀️</div>
+                <div class="tip-content">
+                    <div id="health-tip-text">Loading health tip...</div>
+                </div>
+                <button id="tip-next-btn" class="tip-next-btn" title="Next tip">↻</button>
             </div>
         </main>
 
@@ -134,6 +163,119 @@
             </div>
         </main>
 
+        <!-- Water Intake Tracker Section -->
+        <main id="water-section" class="view-section" style="display: none;">
+            <div class="tool-container">
+                <h2>💧 Water Intake Tracker</h2>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Stay hydrated! Aim for 8 glasses a day.</p>
+                
+                <div class="water-progress-container">
+                    <svg class="water-ring" viewBox="0 0 120 120">
+                        <circle class="water-ring-bg" cx="60" cy="60" r="52" />
+                        <circle id="water-ring-fill" class="water-ring-fill" cx="60" cy="60" r="52"
+                            stroke-dasharray="326.73" stroke-dashoffset="326.73"
+                            transform="rotate(-90 60 60)" />
+                    </svg>
+                    <div class="water-ring-text">
+                        <span id="water-count">0</span>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">/ 8</span>
+                    </div>
+                </div>
+                
+                <div style="font-size: 1.5rem; font-weight: 600; color: #4fc3f7;" id="water-percent">0%</div>
+                
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                    <button class="primary-btn" style="width: auto; padding: 10px 25px;" id="water-add-1">+ 1 Glass 🥤</button>
+                    <button class="primary-btn" style="width: auto; padding: 10px 25px; background: #0288d1;" id="water-add-2">+ 2 Glasses 🥤🥤</button>
+                </div>
+                <button class="secondary-btn" id="water-reset">↻ Reset Today</button>
+                
+                <div id="water-motivation" style="color: var(--text-muted); font-size: 0.9rem; text-align: center; min-height: 24px;"></div>
+            </div>
+        </main>
+        
+        <!-- Symptom Journal Section -->
+        <main id="symptom-section" class="view-section" style="display: none;">
+            <div class="tool-container" style="padding: 20px;">
+                <h2>📋 Symptom Journal</h2>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Track your symptoms daily to identify patterns.</p>
+                
+                <div style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label style="color: var(--text-muted); min-width: 60px;">Date:</label>
+                        <input type="date" id="symptom-date" style="flex: 1; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 10px; color: white; font-size: 0.95rem;">
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label style="color: var(--text-muted); min-width: 60px;">Severity:</label>
+                        <div style="flex: 1; display: flex; gap: 5px;">
+                            <span style="color: var(--text-muted); font-size: 0.8rem;">Mild</span>
+                            <input type="range" id="symptom-severity" min="1" max="5" value="3" style="flex: 1;">
+                            <span style="color: var(--text-muted); font-size: 0.8rem;">Severe</span>
+                        </div>
+                        <span id="symptom-severity-label" style="color: #ffaa00; font-weight: 600; min-width: 40px; text-align: center;">3</span>
+                    </div>
+                    
+                    <div>
+                        <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Symptoms (comma separated):</label>
+                        <input type="text" id="symptom-input" placeholder="e.g. headache, fatigue, fever" style="width: 100%; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 12px; color: white; font-size: 0.95rem;">
+                    </div>
+                    
+                    <div>
+                        <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Notes:</label>
+                        <textarea id="symptom-notes" rows="2" placeholder="Any additional notes..." style="width: 100%; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 12px; color: white; font-size: 0.95rem; resize: vertical; font-family: inherit;"></textarea>
+                    </div>
+                    
+                    <button class="primary-btn" id="symptom-save-btn">💾 Save Entry</button>
+                </div>
+                
+                <div style="width: 100%; max-width: 400px; margin-top: 20px;">
+                    <h3 style="color: var(--text-color); font-size: 1rem; margin-bottom: 10px;">📅 Recent Entries</h3>
+                    <div id="symptom-history" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">No entries yet. Start logging your symptoms!</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Medicine Reminder Section -->
+        <main id="medicine-section" class="view-section" style="display: none;">
+            <div class="tool-container" style="padding: 20px;">
+                <h2>💊 Medicine Reminder</h2>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">Never miss a dose! Set reminders for your medications.</p>
+                
+                <div style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px;">
+                    <div class="input-group">
+                        <label>Medicine Name</label>
+                        <input type="text" id="med-name" placeholder="e.g. Paracetamol">
+                    </div>
+                    <div class="input-group">
+                        <label>Dosage</label>
+                        <input type="text" id="med-dosage" placeholder="e.g. 500mg, 1 tablet">
+                    </div>
+                    <div class="input-group">
+                        <label>Time</label>
+                        <input type="time" id="med-time" value="08:00">
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <label style="color: var(--text-muted);">Notify me</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="med-notify" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <button class="primary-btn" id="med-add-btn">➕ Add Medicine</button>
+                </div>
+                
+                <div style="width: 100%; max-width: 400px; margin-top: 20px;">
+                    <h3 style="color: var(--text-color); font-size: 1rem; margin-bottom: 10px;">💊 Your Medications</h3>
+                    <div id="med-list" style="display: flex; flex-direction: column; gap: 8px;">
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">No medications added yet.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
         <!-- Chat Section -->
         <main id="chat-section" class="chat-container view-section" style="display: none;">
             <div id="chat-box" class="chat-box">
@@ -144,6 +286,7 @@
             
             <div class="input-area">
                 <input type="text" id="user-input" placeholder="Type your symptoms or question here..." autocomplete="off">
+                <button id="mic-btn" class="input-icon-btn" title="Click to speak">🎤</button>
                 <button id="send-btn">
                     <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                 </button>
