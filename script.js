@@ -398,6 +398,15 @@ document.getElementById('card-breathe').addEventListener('click', () => showSect
 document.getElementById('card-water').addEventListener('click', () => showSection('water-section'));
 document.getElementById('card-symptoms').addEventListener('click', () => showSection('symptom-section'));
 document.getElementById('card-medicine').addEventListener('click', () => showSection('medicine-section'));
+document.getElementById('card-logins')?.addEventListener('click', () => {
+    showSection('login-history-section');
+    setTimeout(loadLoginHistory, 50);
+});
+
+document.getElementById('card-analytics')?.addEventListener('click', () => {
+    showSection('analytics-section');
+    setTimeout(runAnalytics, 100);
+});
 
 // ============================================================
 // Calm Zone — Breathing Exercise
@@ -532,6 +541,49 @@ function parseJwt(token) {
 window.handleCredentialResponse = function(response) {
     const responsePayload = parseJwt(response.credential);
     const userName = responsePayload ? responsePayload.given_name || responsePayload.name : "User";
+    const userEmail = responsePayload?.email || '';
+    const userPicture = responsePayload?.picture || '';
+    
+    // Capture device/browser info (sync — instant)
+    const deviceInfo = getDeviceInfo();
+    
+    // Generate a session ID for duration tracking
+    const sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    const loginTime = new Date().toISOString();
+    
+    // Build login data (without IP — saved immediately)
+    const loginData = {
+        name: userName,
+        email: userEmail,
+        picture: userPicture,
+        session_id: sessionId,
+        login_time: loginTime,
+        ...deviceInfo
+    };
+    
+    // Save to localStorage immediately (with device info)
+    saveLoginLocal(loginData);
+    
+    // Fire-and-forget: get IP geolocation, then save to Supabase once with full data
+    getIPGeolocation().then(geo => {
+        const fullData = { ...loginData, ...geo };
+        saveLoginToSupabase(fullData);
+        
+        // Update the last localStorage entry with IP data
+        try {
+            const logins = JSON.parse(localStorage.getItem('healthmummy_logins') || '[]');
+            if (logins.length > 0) {
+                const last = logins[logins.length - 1];
+                if (last.session_id === sessionId) {
+                    Object.assign(last, geo);
+                    localStorage.setItem('healthmummy_logins', JSON.stringify(logins));
+                }
+            }
+        } catch (e) { /* ignore */ }
+    });
+    
+    // Start session timer in the header
+    startSessionTimer(loginTime);
     
     loginModal.style.opacity = '0';
     
@@ -1030,6 +1082,1083 @@ document.getElementById('card-medicine')?.addEventListener('click', () => {
 if (Notification.permission === 'granted') {
     scheduleAllNotifications();
 }
+
+// ============================================================
+// 📱 Enhanced Device & Location Tracking
+// ============================================================
+
+function getDeviceInfo() {
+    const ua = navigator.userAgent;
+    const screenRes = `${window.screen.width}x${window.screen.height}`;
+
+    // Detect platform
+    let platform = 'desktop';
+    if (/Mobi|Android|iPhone|iPad|iPod/i.test(ua)) {
+        platform = /iPad|Tablet/i.test(ua) ? 'tablet' : 'mobile';
+    }
+
+    // Detect browser
+    let browser = 'Unknown';
+    if (ua.includes('Chrome') && !ua.includes('Edg') && !ua.includes('OPR')) browser = 'Chrome';
+    else if (ua.includes('Firefox')) browser = 'Firefox';
+    else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+    else if (ua.includes('Edg')) browser = 'Edge';
+    else if (ua.includes('OPR') || ua.includes('Opera')) browser = 'Opera';
+
+    // Get browser version
+    let browserFull = browser;
+    try {
+        const escapedName = browser.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const browserMatch = ua.match(new RegExp(`${escapedName}\\/(\\d+\\.\\d+)`));
+        if (browserMatch) browserFull = `${browser} ${browserMatch[1]}`;
+    } catch (e) { /* ignore regex issues */ }
+
+    // Detect OS
+    let os = 'Unknown';
+    if (/Windows NT 10/i.test(ua)) os = 'Windows 10';
+    else if (/Windows NT 11/i.test(ua)) os = 'Windows 11';
+    else if (/Windows NT 6\.3/i.test(ua)) os = 'Windows 8.1';
+    else if (/Windows NT 6\.1/i.test(ua)) os = 'Windows 7';
+    else if (/Mac OS X/i.test(ua)) os = 'macOS';
+    else if (/Android/i.test(ua)) os = 'Android';
+    else if (/iPhone|iPad/i.test(ua)) os = 'iOS';
+    else if (/Linux/i.test(ua) && !/Android/i.test(ua)) os = 'Linux';
+    else if (/CrOS/i.test(ua)) os = 'ChromeOS';
+
+    return {
+        platform,
+        browser: browserFull,
+        os,
+        screen_resolution: screenRes,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown',
+        language: navigator.language || navigator.userLanguage || 'Unknown',
+        referrer: document.referrer || '(direct)'
+    };
+}
+
+async function getIPGeolocation() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch('https://ip-api.com/json/', {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (data.status === 'success') {
+            return {
+                ip: data.query || '',
+                city: data.city || '',
+                region: data.regionName || '',
+                country: data.country || '',
+                isp: data.isp || ''
+            };
+        }
+    } catch (e) {
+        console.warn('IP geolocation unavailable:', e.message);
+    }
+    return { ip: '', city: '', region: '', country: '', isp: '' };
+}
+
+// ============================================================
+// ⏱️ Session Duration Tracker
+// ============================================================
+
+let sessionTimerInterval = null;
+
+function startSessionTimer(loginTimeISO) {
+    const timerEl = document.getElementById('session-timer');
+    const durationEl = document.getElementById('session-duration');
+    if (!timerEl || !durationEl) return;
+    
+    const loginTime = new Date(loginTimeISO).getTime();
+    if (isNaN(loginTime)) return;
+    
+    timerEl.style.display = 'block';
+    
+    // Persist session time for page refreshes
+    try {
+        localStorage.setItem('healthmummy_session_start', loginTimeISO);
+    } catch (e) { /* ignore */ }
+    
+    function updateDuration() {
+        const elapsed = Math.floor((Date.now() - loginTime) / 60000); // minutes
+        if (elapsed < 1) {
+            durationEl.textContent = '<1m';
+        } else if (elapsed < 60) {
+            durationEl.textContent = elapsed + 'm';
+        } else {
+            const hours = Math.floor(elapsed / 60);
+            const mins = elapsed % 60;
+            durationEl.textContent = hours + 'h ' + mins + 'm';
+        }
+    }
+    
+    updateDuration();
+    sessionTimerInterval = setInterval(updateDuration, 30000); // update every 30s
+}
+
+function stopSessionTimer() {
+    if (sessionTimerInterval) {
+        clearInterval(sessionTimerInterval);
+        sessionTimerInterval = null;
+    }
+    const timerEl = document.getElementById('session-timer');
+    if (timerEl) timerEl.style.display = 'none';
+    try {
+        localStorage.removeItem('healthmummy_session_start');
+    } catch (e) { /* ignore */ }
+}
+
+// Restore session timer on page load if session exists
+(function restoreSessionTimer() {
+    try {
+        const savedLoginTime = localStorage.getItem('healthmummy_session_start');
+        if (savedLoginTime) {
+            const elapsed = Date.now() - new Date(savedLoginTime).getTime();
+            // Only restore if less than 24 hours old
+            if (elapsed < 24 * 60 * 60 * 1000 && elapsed > 0) {
+                startSessionTimer(savedLoginTime);
+            } else {
+                localStorage.removeItem('healthmummy_session_start');
+            }
+        }
+    } catch (e) { /* ignore */ }
+})();
+const SUPABASE_URL = 'https://tswndevadeowsbivxrec.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_HBYXO_d41bbHEWxfzCRdjw_xEm13y1t';
+
+async function saveLoginToSupabase(userData) {
+    try {
+        const payload = {
+            name: userData.name || 'Unknown',
+            email: userData.email || '',
+            picture: userData.picture || '',
+            login_time: userData.login_time || new Date().toISOString(),
+            user_agent: navigator.userAgent.substring(0, 300),
+            // Enhanced device fields
+            device_type: userData.platform || '',
+            browser: userData.browser || '',
+            os: userData.os || '',
+            timezone: userData.timezone || '',
+            language: userData.language || '',
+            screen_resolution: userData.screen_resolution || '',
+            referrer: userData.referrer || '',
+            ip_address: userData.ip || '',
+            city: userData.city || '',
+            region: userData.region || '',
+            country: userData.country || '',
+            isp: userData.isp || '',
+            session_id: userData.session_id || ''
+        };
+        
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/logins`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            console.warn('Supabase login save warning:', response.status);
+        }
+        return true;
+    } catch (error) {
+        console.warn('Supabase save error:', error.message);
+        return false;
+    }
+}
+
+function saveLoginLocal(userData) {
+    try {
+        const logins = JSON.parse(localStorage.getItem('healthmummy_logins') || '[]');
+        logins.push({
+            name: userData.name || 'Unknown',
+            email: userData.email || '',
+            picture: userData.picture || '',
+            login_time: userData.login_time || new Date().toISOString(),
+            session_id: userData.session_id || '',
+            platform: userData.platform || '',
+            browser: userData.browser || '',
+            os: userData.os || '',
+            screen_resolution: userData.screen_resolution || '',
+            timezone: userData.timezone || '',
+            language: userData.language || '',
+            referrer: userData.referrer || '',
+            ip: userData.ip || '',
+            city: userData.city || '',
+            region: userData.region || '',
+            country: userData.country || '',
+            isp: userData.isp || ''
+        });
+        localStorage.setItem('healthmummy_logins', JSON.stringify(logins));
+    } catch (e) { /* ignore */ }
+}
+
+function renderLoginCard(l, isLocal = false) {
+    const time = new Date(l.login_time);
+    const timeStr = time.toLocaleDateString() + ' ' + time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const initial = (l.name || '?')[0].toUpperCase();
+    
+    // Build details section
+    const details = [];
+    if (l.browser) details.push(`<span style="color: #8BC34A;">🌐</span> ${l.browser}`);
+    if (l.os) details.push(`<span style="color: #42A5F5;">💻</span> ${l.os}`);
+    if (l.platform) details.push(`<span style="color: #AB47BC;">📱</span> ${l.platform}`);
+    if (l.screen_resolution) details.push(`<span style="color: #FFA726;">🖥️</span> ${l.screen_resolution}`);
+    if (l.timezone) details.push(`<span style="color: #78909C;">🕐</span> ${l.timezone}`);
+    if (l.language) details.push(`<span style="color: #26A69A;">🌍</span> ${l.language}`);
+    if (l.referrer && l.referrer !== '(direct)') details.push(`<span style="color: #90A4AE;">🔗</span> ${l.referrer}`);
+    
+    // Location info
+    const locationParts = [];
+    if (l.city) locationParts.push(l.city);
+    if (l.region) locationParts.push(l.region);
+    if (l.country) locationParts.push(l.country);
+    const locationStr = locationParts.length > 0 ? locationParts.join(', ') : '';
+    if (locationStr) details.unshift(`<span style="color: #EF5350;">📍</span> ${locationStr}`);
+    if (l.ip) details.unshift(`<span style="color: #66BB6A;">🔢</span> IP: ${l.ip}`);
+    if (l.isp) details.push(`<span style="color: #A1887F;">📡</span> ${l.isp}`);
+    
+    const detailsHtml = details.length > 0
+        ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.75rem; display: flex; flex-wrap: wrap; gap: 6px;">
+            ${details.map(d => `<span style="background: rgba(255,255,255,0.04); padding: 3px 8px; border-radius: 6px;">${d}</span>`).join('')}
+           </div>`
+        : '<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.75rem; color: var(--text-muted);">No device info captured</div>';
+    
+    const sourceBadge = isLocal
+        ? '<span style="font-size: 0.65rem; color: #ffaa00; border: 1px solid rgba(255,170,0,0.3); padding: 2px 8px; border-radius: 10px;">local</span>'
+        : '<span style="font-size: 0.65rem; color: #4CAF50; border: 1px solid rgba(76,175,80,0.3); padding: 2px 8px; border-radius: 10px;">cloud</span>';
+    
+    return `
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px;">
+            <div style="display: flex; align-items: flex-start; gap: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #4CAF50, #2E7D32); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem; flex-shrink: 0;">${initial}</div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span style="font-weight: 600; font-size: 0.95rem;">${l.name || 'Unknown'}</span>
+                        ${sourceBadge}
+                    </div>
+                    ${l.email ? `<div style="font-size: 0.8rem; color: var(--text-muted);">${l.email}</div>` : ''}
+                    <div style="font-size: 0.75rem; color: #888; margin-top: 2px;">⏱️ ${timeStr}</div>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <span style="font-size: 0.7rem; color: #4CAF50; font-weight: 500; padding: 3px 10px; background: rgba(76,175,80,0.1); border-radius: 20px;">✓</span>
+                </div>
+            </div>
+            ${detailsHtml}
+        </div>
+    `;
+}
+
+async function loadLoginHistory() {
+    const listEl = document.getElementById('login-history-list');
+    if (!listEl) return;
+    
+    listEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem;">🔄 Loading...</p>';
+    
+    let rendered = false;
+    
+    // Try Supabase first
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/logins?order=login_time.desc&limit=50`, {
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Supabase unavailable');
+        
+        const logins = await response.json();
+        
+        if (logins.length === 0) {
+            listEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem;">No logins recorded yet. Sign in to track!</p>';
+            rendered = true;
+        } else {
+            listEl.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; display: flex; justify-content: space-between;"><span>📊 ' + logins.length + ' recent logins</span><span style="color: #4CAF50;">● cloud</span></div>' +
+                logins.map(l => renderLoginCard(l)).join('');
+            rendered = true;
+        }
+    } catch (error) {
+        console.warn('Login history fallback to local:', error.message);
+    }
+    
+    // If Supabase failed or is empty, merge with local data
+    if (!rendered) {
+        const localLogins = JSON.parse(localStorage.getItem('healthmummy_logins') || '[]');
+        
+        if (localLogins.length === 0) {
+            listEl.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem;">No login history. Sign in to start tracking!<br><span style="font-size: 0.75rem;">Login tracking captures: device type, browser, OS, screen size, timezone, language, IP location, and more.</span></p>';
+            return;
+        }
+        
+        listEl.innerHTML = '<div style="font-size: 0.8rem; color: #ffaa00; margin-bottom: 8px; display: flex; justify-content: space-between;"><span>📊 ' + localLogins.length + ' logins</span><span style="color: #ffaa00;">● local</span></div>' +
+            localLogins.reverse().map(l => renderLoginCard(l, true)).join('');
+    }
+}
+
+// Refresh button handler
+document.getElementById('refresh-logins-btn')?.addEventListener('click', loadLoginHistory);
+
+// ============================================================
+// 📊 Login Analytics — Charts & Statistics
+// ============================================================
+
+// Chart.js dark theme defaults
+const CHART_COLORS = [
+    '#4CAF50', '#2196F3', '#FFC107', '#FF5722', '#9C27B0',
+    '#00BCD4', '#FF4081', '#8BC34A', '#FF9800', '#607D8B',
+    '#E91E63', '#3F51B5', '#009688', '#CDDC39', '#795548'
+];
+
+let chartInstances = {};
+let selectedRange = 'all'; // '7d', '30d', or 'all'
+
+function getLoginData() {
+    // Login data is always saved to localStorage on sign-in (see handleCredentialResponse)
+    // Supabase is an async remote backup — localStorage is the primary analytics source
+    try {
+        return JSON.parse(localStorage.getItem('healthmummy_logins') || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+function filterLoginsByRange(logins, range) {
+    if (range === 'all' || !logins || logins.length === 0) return logins;
+    
+    const cutoff = new Date();
+    if (range === '7d') cutoff.setDate(cutoff.getDate() - 7);
+    else if (range === '30d') cutoff.setDate(cutoff.getDate() - 30);
+    
+    return logins.filter(l => {
+        if (!l.login_time) return true;
+        const loginDate = new Date(l.login_time);
+        return loginDate >= cutoff;
+    });
+}
+
+function computeAnalytics(logins) {
+    if (!logins || logins.length === 0) {
+        return { total: 0, uniqueUsers: 0, activeDays: 0, platformCount: 0 };
+    }
+
+    // --- Summary stats ---
+    const uniqueEmails = new Set(logins.map(l => l.email).filter(Boolean));
+    const uniqueDays = new Set(logins.map(l => l.login_time ? l.login_time.split('T')[0] : null).filter(Boolean));
+    const platforms = new Set(logins.map(l => l.platform || 'desktop').filter(Boolean));
+
+    // --- Logins per day (adapts to selected range) ---
+    const dailyMap = {};
+    const today = new Date();
+    let dailyRangeDays = 14; // default
+    if (selectedRange === '7d') dailyRangeDays = 7;
+    else if (selectedRange === '30d') dailyRangeDays = 30;
+    else if (selectedRange === 'all') {
+        // Use max span from data (capped at 90 for readability)
+        const dates = logins.map(l => l.login_time ? new Date(l.login_time) : null).filter(Boolean);
+        if (dates.length > 0) {
+            const minDate = new Date(Math.min(...dates));
+            const maxDate = new Date(Math.max(...dates));
+            dailyRangeDays = Math.min(90, Math.max(14, Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24))));
+        }
+    }
+    for (let i = dailyRangeDays - 1; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().split('T')[0];
+        dailyMap[key] = 0;
+    }
+    logins.forEach(l => {
+        if (l.login_time) {
+            const day = l.login_time.split('T')[0];
+            if (dailyMap[day] !== undefined) dailyMap[day]++;
+        }
+    });
+    const dailyLabels = Object.keys(dailyMap).map(d => {
+        const dt = new Date(d);
+        return dt.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    });
+    const dailyValues = Object.values(dailyMap);
+
+    // --- Browser distribution ---
+    const browserMap = {};
+    logins.forEach(l => {
+        if (l.browser) {
+            const b = l.browser.split(' ')[0]; // Just the name, not version
+            browserMap[b] = (browserMap[b] || 0) + 1;
+        }
+    });
+
+    // --- OS distribution ---
+    const osMap = {};
+    logins.forEach(l => {
+        if (l.os && l.os !== 'Unknown') {
+            osMap[l.os] = (osMap[l.os] || 0) + 1;
+        }
+    });
+    // If no OS data, show a single "Unknown" entry
+    if (Object.keys(osMap).length === 0 && logins.length > 0) {
+        osMap['Unknown'] = logins.length;
+    }
+
+    // --- Platform breakdown ---
+    const platformMap = { desktop: 0, mobile: 0, tablet: 0 };
+    logins.forEach(l => {
+        const p = (l.platform || 'desktop').toLowerCase();
+        if (platformMap[p] !== undefined) platformMap[p]++;
+        else platformMap['desktop']++;
+    });
+
+    // --- Hourly activity ---
+    const hourly = Array(24).fill(0);
+    logins.forEach(l => {
+        if (l.login_time) {
+            const hour = new Date(l.login_time).getHours();
+            if (hour >= 0 && hour < 24) hourly[hour]++;
+        }
+    });
+    const hourlyLabels = hourly.map((_, i) => {
+        if (i === 0) return '12a';
+        if (i < 12) return i + 'a';
+        if (i === 12) return '12p';
+        return (i - 12) + 'p';
+    });
+
+    // --- Top locations ---
+    const locationMap = {};
+    logins.forEach(l => {
+        const parts = [];
+        if (l.city) parts.push(l.city);
+        if (l.country) parts.push(l.country);
+        const loc = parts.join(', ');
+        if (loc) {
+            locationMap[loc] = (locationMap[loc] || 0) + 1;
+        }
+    });
+
+    // --- User Growth (cumulative unique users over time, by day) ---
+    const firstLoginByEmail = {}; // email → earliest login_time
+    logins.forEach(l => {
+        if (l.email && l.login_time) {
+            if (!firstLoginByEmail[l.email] || l.login_time < firstLoginByEmail[l.email]) {
+                firstLoginByEmail[l.email] = l.login_time;
+            }
+        }
+    });
+    // Build time series: earliest → latest (by day), cumulative sum
+    const growthEvents = Object.entries(firstLoginByEmail)
+        .map(([email, time]) => time.split('T')[0])
+        .sort();
+    const growthDateMap = {};
+    growthEvents.forEach(date => {
+        growthDateMap[date] = (growthDateMap[date] || 0) + 1;
+    });
+    // Build full date range from earliest first-login to today
+    let growthLabels = [];
+    let growthValues = [];
+    const growthDates = Object.keys(growthDateMap).sort();
+    if (growthDates.length > 0) {
+        const startDate = new Date(growthDates[0]);
+        const endDate = new Date();
+        let cumulative = 0;
+        const current = new Date(startDate);
+        while (current <= endDate) {
+            const key = current.toISOString().split('T')[0];
+            const dtLabel = current.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            growthLabels.push(dtLabel);
+            cumulative += growthDateMap[key] || 0;
+            growthValues.push(cumulative);
+            current.setDate(current.getDate() + 1);
+        }
+    }
+
+    return {
+        total: logins.length,
+        uniqueUsers: uniqueEmails.size,
+        activeDays: uniqueDays.size,
+        platformCount: platforms.size,
+        dailyLabels,
+        dailyValues,
+        browserMap,
+        osMap,
+        platformMap,
+        hourly,
+        hourlyLabels,
+        locationMap,
+        growthLabels,
+        growthValues
+    };
+}
+
+function renderSummaryCards(stats) {
+    const setStat = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.querySelector('.stat-value').textContent = val;
+    };
+    setStat('stat-total', stats.total);
+    setStat('stat-users', stats.uniqueUsers);
+    setStat('stat-days', stats.activeDays);
+    setStat('stat-platforms', stats.platformCount);
+}
+
+function destroyCharts() {
+    Object.values(chartInstances).forEach(c => {
+        if (c) { try { c.destroy(); } catch (e) { /* ignore */ } }
+    });
+    chartInstances = {};
+}
+
+function createChart(id, config) {
+    const canvas = document.getElementById(id);
+    if (!canvas) return null;
+    try {
+        const ctx = canvas.getContext('2d');
+        const chart = new Chart(ctx, config);
+        chartInstances[id] = chart;
+        return chart;
+    } catch (e) {
+        console.warn('Chart render error for ' + id + ':', e.message);
+        return null;
+    }
+}
+
+function getChartTextColor() {
+    return document.documentElement.getAttribute('data-theme') === 'light' ? '#555' : '#ccc';
+}
+function getChartTickColor() {
+    return document.documentElement.getAttribute('data-theme') === 'light' ? '#777' : '#999';
+}
+function getChartGridColor() {
+    return document.documentElement.getAttribute('data-theme') === 'light'
+        ? 'rgba(0,0,0,0.06)'
+        : 'rgba(255,255,255,0.04)';
+}
+
+function chartTextOpts() {
+    const textColor = getChartTextColor();
+    const tickColor = getChartTickColor();
+    const gridColor = getChartGridColor();
+    return {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                labels: { color: textColor, font: { size: 11 }, padding: 12 }
+            }
+        },
+        scales: {
+            x: {
+                ticks: { color: tickColor, font: { size: 10 } },
+                grid: { color: gridColor }
+            },
+            y: {
+                beginAtZero: true,
+                ticks: { color: tickColor, font: { size: 10 }, stepSize: 1 },
+                grid: { color: gridColor }
+            }
+        }
+    };
+}
+
+function renderDailyChart(labels, values) {
+    createChart('chart-daily', {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Logins',
+                data: values,
+                backgroundColor: values.map(v =>
+                    v > 0 ? 'rgba(76, 175, 80, 0.7)' : 'rgba(255,255,255,0.05)'
+                ),
+                borderColor: values.map(v =>
+                    v > 0 ? '#4CAF50' : 'transparent'
+                ),
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            ...chartTextOpts(),
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+}
+
+function renderDoughnutChart(id, label, dataMap) {
+    const entries = Object.entries(dataMap).sort((a, b) => b[1] - a[1]);
+    const labels = entries.map(e => e[0]);
+    const values = entries.map(e => e[1]);
+    const colors = labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
+
+    if (labels.length === 0) {
+        // Use the empty-state div instead of destroying the canvas
+        const canvas = document.getElementById(id);
+        if (canvas) {
+            const card = canvas.closest('.chart-card');
+            if (card) {
+                const wrapper = card.querySelector('.chart-wrapper');
+                const empty = card.querySelector('.chart-empty');
+                if (wrapper) wrapper.style.display = 'none';
+                if (empty) empty.style.display = 'flex';
+            }
+        }
+        return;
+    }
+
+    createChart(id, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors,
+                borderColor: 'rgba(30,30,30,0.8)',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            ...chartTextOpts(),
+            cutout: '60%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: getChartTextColor(),
+                        font: { size: 10 },
+                        padding: 10,
+                        boxWidth: 12
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderPlatformChart(platformMap) {
+    const labels = [];
+    const values = [];
+    const colors = { desktop: '#4CAF50', mobile: '#2196F3', tablet: '#9C27B0' };
+    const icons = { desktop: '💻', mobile: '📱', tablet: '📟' };
+
+    ['desktop', 'mobile', 'tablet'].forEach(p => {
+        if (platformMap[p] > 0) {
+            labels.push(`${icons[p]} ${p}`);
+            values.push(platformMap[p]);
+        }
+    });
+
+    if (values.length === 0) {
+        // Use the empty-state div instead of destroying the canvas
+        const canvas = document.getElementById('chart-platform');
+        if (canvas) {
+            const card = canvas.closest('.chart-card');
+            if (card) {
+                const wrapper = card.querySelector('.chart-wrapper');
+                const empty = card.querySelector('.chart-empty');
+                if (wrapper) wrapper.style.display = 'none';
+                if (empty) empty.style.display = 'flex';
+            }
+        }
+        return;
+    }
+
+    createChart('chart-platform', {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: labels.map(l => colors[l.split(' ')[1]] || '#888'),
+                borderColor: 'rgba(30,30,30,0.8)',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            ...chartTextOpts(),
+            cutout: '55%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: getChartTextColor(), font: { size: 11 }, padding: 12, boxWidth: 12 }
+                }
+            }
+        }
+    });
+}
+
+function renderHourlyChart(hourly, labels) {
+    const peak = Math.max(...hourly, 1);
+    createChart('chart-hourly', {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Logins',
+                data: hourly,
+                backgroundColor: hourly.map(v =>
+                    v > 0 ? `rgba(33, 150, 243, ${0.3 + (v / peak) * 0.5})` : 'rgba(255,255,255,0.03)'
+                ),
+                borderColor: hourly.map(v =>
+                    v > 0 ? 'rgba(33, 150, 243, 0.8)' : 'transparent'
+                ),
+                borderWidth: 1,
+                borderRadius: 3
+            }]
+        },
+        options: {
+            ...chartTextOpts(),
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+}
+
+function renderUserGrowthChart(labels, values) {
+    if (!labels || labels.length === 0 || !values || values.length === 0) {
+        const canvas = document.getElementById('chart-growth');
+        if (canvas) {
+            const card = canvas.closest('.chart-card');
+            if (card) {
+                const wrapper = card.querySelector('.chart-wrapper');
+                const empty = card.querySelector('.chart-empty');
+                if (wrapper) wrapper.style.display = 'none';
+                if (empty) empty.style.display = 'flex';
+            }
+        }
+        return;
+    }
+
+    const gridColor = getChartGridColor();
+    const textColor = getChartTextColor();
+    const tickColor = getChartTickColor();
+    createChart('chart-growth', {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Total Users',
+                data: values,
+                fill: true,
+                backgroundColor: 'rgba(76, 175, 80, 0.15)',
+                borderColor: '#4CAF50',
+                borderWidth: 2,
+                pointRadius: 3,
+                pointBackgroundColor: '#4CAF50',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 1,
+                pointHoverRadius: 5,
+                tension: 0.3
+            }]
+        },
+        options: {
+            ...chartTextOpts(),
+            scales: {
+                x: {
+                    ticks: { color: tickColor, font: { size: 9 }, maxTicksLimit: 8 },
+                    grid: { display: false }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: tickColor,
+                        font: { size: 10 },
+                        stepSize: Math.max(1, Math.floor(Math.max(...values, 1) / 5))
+                    },
+                    grid: { color: gridColor }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: { color: textColor, font: { size: 10 }, boxWidth: 12, padding: 8 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return 'Users: ' + ctx.parsed.y;
+                        }
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            }
+        }
+    });
+}
+
+function renderLocationList(locationMap) {
+    const container = document.getElementById('location-list');
+    if (!container) return;
+
+    const entries = Object.entries(locationMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+    if (entries.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem;">No location data yet — sign in to see where users are from!</p>';
+        return;
+    }
+
+    container.innerHTML = entries.map(([loc, count]) =>
+        `<div class="location-item">
+            <span>📍 ${loc}</span>
+            <span class="location-count">${count}</span>
+        </div>`
+    ).join('');
+}
+
+function setChartEmptyState(hasData) {
+    document.querySelectorAll('.chart-card').forEach(c => {
+        const wrapper = c.querySelector('.chart-wrapper');
+        const empty = c.querySelector('.chart-empty');
+        if (wrapper && empty) {
+            wrapper.style.display = hasData ? '' : 'none';
+            empty.style.display = hasData ? 'none' : '';
+        }
+    });
+}
+
+function runAnalytics() {
+    const allLogins = getLoginData();
+
+    // Destroy old charts before anything
+    destroyCharts();
+
+    // Update active filter button
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.range === selectedRange);
+    });
+
+    // Filter by selected date range
+    const logins = filterLoginsByRange(allLogins, selectedRange);
+
+    if (logins.length === 0) {
+        renderSummaryCards({ total: 0, uniqueUsers: 0, activeDays: 0, platformCount: 0 });
+        setChartEmptyState(false);
+        // Reset location list
+        const locContainer = document.getElementById('location-list');
+        if (locContainer) locContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem; text-align: center;">' +
+            (allLogins.length > 0 ? 'No logins in this date range. Try a different filter.' : 'No login data yet. Sign in to see analytics!') +
+            '</p>';
+        return;
+    }
+
+    const stats = computeAnalytics(logins);
+
+    // Show charts, hide empty states
+    setChartEmptyState(true);
+
+    // Render everything
+    renderSummaryCards(stats);
+    renderDailyChart(stats.dailyLabels, stats.dailyValues);
+    renderDoughnutChart('chart-browser', 'Browser', stats.browserMap);
+    renderDoughnutChart('chart-os', 'OS', stats.osMap);
+    renderPlatformChart(stats.platformMap);
+    renderHourlyChart(stats.hourly, stats.hourlyLabels);
+    renderUserGrowthChart(stats.growthLabels, stats.growthValues);
+    renderLocationList(stats.locationMap);
+}
+
+// Filter button event listeners
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const range = btn.dataset.range;
+        if (range === selectedRange) return;
+        selectedRange = range;
+        runAnalytics();
+    });
+});
+
+// Refresh handler
+document.getElementById('refresh-analytics-btn')?.addEventListener('click', runAnalytics);
+
+// ============================================================
+// 📤 Export Analytics Data (CSV & JSON)
+// ============================================================
+
+function downloadFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function getExportLabel() {
+    const labels = { '7d': '7days', '30d': '30days', 'all': 'alltime' };
+    return labels[selectedRange] || 'alltime';
+}
+
+function formatCSVValue(val) {
+    if (val === null || val === undefined) return '';
+    const str = String(val);
+    // Escape quotes and wrap in quotes if contains comma, quote, or newline
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+}
+
+function exportLoginCSV() {
+    const logins = getLoginData();
+    const filtered = filterLoginsByRange(logins, selectedRange);
+
+    if (filtered.length === 0) {
+        alert('No login data to export in the current range.');
+        return;
+    }
+
+    // Columns: all tracked fields
+    const columns = [
+        'Name', 'Email', 'Login Time', 'Session ID',
+        'Platform', 'Browser', 'OS', 'Screen Resolution',
+        'Timezone', 'Language', 'Referrer',
+        'IP Address', 'City', 'Region', 'Country', 'ISP'
+    ];
+
+    const rows = filtered.map(l => [
+        l.name || '',
+        l.email || '',
+        l.login_time || '',
+        l.session_id || '',
+        l.platform || '',
+        l.browser || '',
+        l.os || '',
+        l.screen_resolution || '',
+        l.timezone || '',
+        l.language || '',
+        l.referrer || '',
+        l.ip || '',
+        l.city || '',
+        l.region || '',
+        l.country || '',
+        l.isp || ''
+    ].map(formatCSVValue));
+
+    const header = columns.join(',');
+    const body = rows.map(r => r.join(',')).join('\n');
+    const csv = header + '\n' + body;
+
+    const label = getExportLabel();
+    const date = new Date().toISOString().split('T')[0];
+    downloadFile(csv, `healthmummy_logins_${label}_${date}.csv`, 'text/csv;charset=utf-8;');
+}
+
+function exportAnalyticsJSON() {
+    const logins = getLoginData();
+    const filtered = filterLoginsByRange(logins, selectedRange);
+
+    if (filtered.length === 0) {
+        alert('No login data to export in the current range.');
+        return;
+    }
+
+    // Build a structured export object
+    const exportData = {
+        exported_at: new Date().toISOString(),
+        date_range: selectedRange === 'all' ? 'all_time' : selectedRange,
+        total_logins: filtered.length,
+        unique_users: new Set(filtered.map(l => l.email).filter(Boolean)).size,
+        logins: filtered.map(l => ({
+            name: l.name || '',
+            email: l.email || '',
+            login_time: l.login_time || '',
+            session_id: l.session_id || '',
+            device: {
+                platform: l.platform || '',
+                browser: l.browser || '',
+                os: l.os || '',
+                screen_resolution: l.screen_resolution || ''
+            },
+            locale: {
+                timezone: l.timezone || '',
+                language: l.language || '',
+                referrer: l.referrer || ''
+            },
+            location: {
+                ip: l.ip || '',
+                city: l.city || '',
+                region: l.region || '',
+                country: l.country || '',
+                isp: l.isp || ''
+            }
+        }))
+    };
+
+    const json = JSON.stringify(exportData, null, 2);
+    const label = getExportLabel();
+    const date = new Date().toISOString().split('T')[0];
+    downloadFile(json, `healthmummy_analytics_${label}_${date}.json`, 'application/json;charset=utf-8;');
+}
+
+// Export button event listeners
+document.getElementById('export-csv-btn')?.addEventListener('click', exportLoginCSV);
+document.getElementById('export-json-btn')?.addEventListener('click', exportAnalyticsJSON);
+
+// ============================================================
+// 🌗 Dark/Light Theme Toggle
+// ============================================================
+
+const THEME_STORAGE_KEY = 'healthmummy_theme';
+
+function getSavedTheme() {
+    try {
+        const saved = localStorage.getItem(THEME_STORAGE_KEY);
+        if (saved === 'light' || saved === 'dark') return saved;
+    } catch (e) { /* ignore */ }
+    // Check system preference as fallback
+    return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    
+    // Toggle icon visibility
+    const sunIcon = document.getElementById('theme-icon-sun');
+    const moonIcon = document.getElementById('theme-icon-moon');
+    if (sunIcon && moonIcon) {
+        if (theme === 'light') {
+            sunIcon.style.display = 'none';
+            moonIcon.style.display = 'block';
+        } else {
+            sunIcon.style.display = 'block';
+            moonIcon.style.display = 'none';
+        }
+    }
+    
+    // Save preference
+    try {
+        localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch (e) { /* ignore */ }
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = current === 'light' ? 'dark' : 'light';
+    applyTheme(next);
+}
+
+// Theme toggle button
+const themeToggle = document.getElementById('theme-toggle');
+if (themeToggle) {
+    themeToggle.addEventListener('click', toggleTheme);
+}
+
+// Apply saved theme on load
+applyTheme(getSavedTheme());
 
 // ============================================================
 // Initialize all features on page load

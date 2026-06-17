@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <!-- Login Modal -->
@@ -44,7 +45,14 @@
                 <h1>Health Mummy</h1>
                 <p>Your personal well-being guide</p>
             </div>
-            <div style="width: 24px;"></div> <!-- Spacer for flex alignment -->
+            <div id="session-timer" style="display: none; font-size: 0.7rem; color: #81C784; text-align: right; line-height: 1.2; margin-right: 8px;">
+                <span id="session-duration">0m</span>
+                <div style="font-size: 0.6rem; color: #aaa;">active</div>
+            </div>
+            <button id="theme-toggle" class="icon-btn" title="Toggle theme">
+                <svg id="theme-icon-sun" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                <svg id="theme-icon-moon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
         </header>
 
         <!-- Dashboard Menu -->
@@ -99,6 +107,16 @@
                     <div class="card-icon">☀️</div>
                     <h3>Health Tips</h3>
                     <p>Daily wellness tips</p>
+                </div>
+                <div class="feature-card" id="card-logins">
+                    <div class="card-icon">👥</div>
+                    <h3>Login History</h3>
+                    <p>See who signed in</p>
+                </div>
+                <div class="feature-card" id="card-analytics">
+                    <div class="card-icon">📊</div>
+                    <h3>Analytics</h3>
+                    <p>Login stats & charts</p>
                 </div>
             </div>
             
@@ -273,6 +291,130 @@
                         <p style="color: var(--text-muted); font-size: 0.85rem;">No medications added yet.</p>
                     </div>
                 </div>
+            </div>
+        </main>
+        
+        <!-- Login History Section -->
+        <main id="login-history-section" class="view-section" style="display: none;">
+            <div class="tool-container" style="padding: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 400px;">
+                    <h2>👥 Login History</h2>
+                    <button id="refresh-logins-btn" class="secondary-btn" style="padding: 6px 14px; font-size: 0.8rem;">↻ Refresh</button>
+                </div>
+                <p style="color: var(--text-muted); font-size: 0.85rem; width: 100%; max-width: 400px;">Track who signs in to Health Mummy.</p>
+                
+                <div id="login-history-list" style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 8px;">
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">Loading login history...</p>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Login Analytics Section -->
+        <main id="analytics-section" class="view-section" style="display: none;">
+            <div class="analytics-container">
+                <h2>📊 Login Analytics</h2>
+                <p style="color: var(--text-muted); font-size: 0.85rem; text-align: center;">Login statistics and usage patterns</p>
+                
+                <!-- Date Range Filter -->
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-range="7d">7 Days</button>
+                    <button class="filter-btn" data-range="30d">30 Days</button>
+                    <button class="filter-btn" data-range="all">All Time</button>
+                </div>
+                
+                <!-- Summary Cards -->
+                <div class="analytics-summary">
+                    <div class="stat-card" id="stat-total">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Total Logins</div>
+                    </div>
+                    <div class="stat-card" id="stat-users">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Unique Users</div>
+                    </div>
+                    <div class="stat-card" id="stat-days">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Active Days</div>
+                    </div>
+                    <div class="stat-card" id="stat-platforms">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Platforms</div>
+                    </div>
+                </div>
+                
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <!-- Logins per day -->
+                    <div class="chart-card">
+                        <h3>📅 Logins Per Day</h3>
+                        <div class="chart-empty" style="display: none;"><p class="empty-msg">No data yet</p></div>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-daily"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Browser Distribution -->
+                    <div class="chart-card">
+                        <h3>🌐 Browser Distribution</h3>
+                        <div class="chart-empty" style="display: none;"><p class="empty-msg">No data yet</p></div>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-browser"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- OS Distribution -->
+                    <div class="chart-card">
+                        <h3>💻 Operating Systems</h3>
+                        <div class="chart-empty" style="display: none;"><p class="empty-msg">No data yet</p></div>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-os"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Platform Breakdown -->
+                    <div class="chart-card">
+                        <h3>📱 Device Types</h3>
+                        <div class="chart-empty" style="display: none;"><p class="empty-msg">No data yet</p></div>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-platform"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Hourly Activity -->
+                    <div class="chart-card">
+                        <h3>🕐 Hourly Activity</h3>
+                        <div class="chart-empty" style="display: none;"><p class="empty-msg">No data yet</p></div>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-hourly"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- User Growth (Cumulative) -->
+                    <div class="chart-card">
+                        <h3>📈 User Growth</h3>
+                        <div class="chart-empty" style="display: none;"><p class="empty-msg">No data yet</p></div>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-growth"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Location Map (simple country list) -->
+                    <div class="chart-card">
+                        <h3>📍 Top Locations</h3>
+                        <div class="chart-empty" style="display: none;"><p class="empty-msg">No location data yet</p></div>
+                        <div class="chart-wrapper" id="location-list">
+                            <p style="color: var(--text-muted); font-size: 0.85rem; text-align: center;">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Export Buttons -->
+                <div class="export-bar">
+                    <button class="export-btn" id="export-csv-btn">📄 Export CSV</button>
+                    <button class="export-btn" id="export-json-btn">📋 Export JSON</button>
+                </div>
+                
+                <button id="refresh-analytics-btn" class="secondary-btn" style="margin-top: 10px;">↻ Refresh Analytics</button>
             </div>
         </main>
         
