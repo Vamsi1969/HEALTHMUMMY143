@@ -399,6 +399,12 @@ document.getElementById('card-water').addEventListener('click', () => showSectio
 document.getElementById('card-symptoms').addEventListener('click', () => showSection('symptom-section'));
 document.getElementById('card-medicine').addEventListener('click', () => showSection('medicine-section'));
 document.getElementById('card-injury-camera')?.addEventListener('click', () => showSection('injury-section'));
+
+document.getElementById('card-meals')?.addEventListener('click', () => showSection('meal-section'));
+document.getElementById('card-bp')?.addEventListener('click', () => showSection('bp-section'));
+document.getElementById('card-streaks')?.addEventListener('click', () => showSection('streak-section'));
+document.getElementById('card-sleep')?.addEventListener('click', () => showSection('sleep-section'));
+document.getElementById('card-activity')?.addEventListener('click', () => showSection('activity-section'));
 document.getElementById('card-logins')?.addEventListener('click', () => {
     showSection('login-history-section');
     setTimeout(loadLoginHistory, 50);
@@ -2277,6 +2283,12 @@ document.getElementById('card-chat')?.addEventListener('keydown',function(e){if(
 document.getElementById('card-hospital')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
 document.getElementById('card-blood')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
 document.getElementById('card-injury-camera')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+
+document.getElementById('card-meals')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-bp')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-streaks')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-sleep')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-activity')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
 document.getElementById('card-bmi')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
 document.getElementById('card-emergency')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
 document.getElementById('card-breathe')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
@@ -2318,6 +2330,218 @@ document.getElementById('reg-password')?.addEventListener('input',function(){sho
     // Medicines: render if section exists
     renderMedicines();
     
-    // Health tip
+    
+// ============================================================
+// 🥗 Meal Tracker
+// ============================================================
+var MEAL_STORAGE_KEY = 'healthmummy_meals';
+function getMeals() {
+  try { return JSON.parse(localStorage.getItem(MEAL_STORAGE_KEY)) || []; }
+  catch(e) { return []; }
+}
+function saveMeals(meals) {
+  localStorage.setItem(MEAL_STORAGE_KEY, JSON.stringify(meals));
+}
+function renderMeals() {
+  var historyEl = document.getElementById('meal-history');
+  var totalEl = document.getElementById('meal-today-calories');
+  if (!historyEl) return;
+  var meals = getMeals();
+  var today = new Date().toISOString().split('T')[0];
+  var todayMeals = meals.filter(function(m) { return m.date === today; });
+  var total = todayMeals.reduce(function(s, m) { return s + (parseInt(m.calories)||0); }, 0);
+  if (totalEl) totalEl.textContent = total;
+  if (todayMeals.length === 0) {
+    historyEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem">No meals logged today.</p>';
+    return;
+  }
+  var sorted = todayMeals.slice().reverse();
+  historyEl.innerHTML = sorted.map(function(m) {
+    return '<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">' +
+      '<div><span style="font-size:0.8rem;color:var(--text-muted)">' + m.type + '</span><br><span>' + m.name + '</span></div>' +
+      '<span style="font-weight:600;color:#4CAF50">' + m.calories + ' cal</span></div>';
+  }).join('');
+}
+function saveMeal() {
+  var name = (document.getElementById('meal-name')?.value || '').trim();
+  var type = document.getElementById('meal-type')?.value || 'Snack';
+  var calories = document.getElementById('meal-calories')?.value;
+  if (!name || !calories) { alert('Please enter meal name and calories.'); return; }
+  var meals = getMeals();
+  var date = new Date().toISOString().split('T')[0];
+  meals.push({ name:name, type:type, calories:parseInt(calories), date:date });
+  saveMeals(meals);
+  document.getElementById('meal-name').value = '';
+  document.getElementById('meal-calories').value = '';
+  renderMeals();
+  var btn = document.getElementById('meal-save-btn');
+  if(btn){btn.textContent='✅ Saved!';btn.style.background='#4CAF50';setTimeout(function(){btn.textContent='💾 Log Meal';btn.style.background='';},1500);}
+}
+
+document.getElementById('meal-save-btn')?.addEventListener('click', saveMeal);
+document.getElementById('card-meals')?.addEventListener('click', function() { setTimeout(renderMeals, 50); });
+
+// ============================================================
+// ❤️ Blood Pressure Log
+// ============================================================
+var BP_STORAGE_KEY = 'healthmummy_bp';
+function getBP() {
+  try { return JSON.parse(localStorage.getItem(BP_STORAGE_KEY)) || []; }
+  catch(e) { return []; }
+}
+function saveBP(entries) {
+  localStorage.setItem(BP_STORAGE_KEY, JSON.stringify(entries));
+}
+function renderBP() {
+  var historyEl = document.getElementById('bp-history');
+  if (!historyEl) return;
+  var entries = getBP();
+  if (entries.length === 0) {
+    historyEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem">No readings yet.</p>'; return;
+  }
+  var sorted = entries.slice().reverse();
+  historyEl.innerHTML = sorted.map(function(e) {
+    var c = e.systolic >= 140 ? '#ff4444' : e.systolic >= 130 ? '#ffaa00' : '#4CAF50';
+    return '<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">' +
+      '<div><span style="font-size:0.8rem;color:var(--text-muted)">' + e.date + '</span><br>' +
+      '<span style="font-size:1.1rem;font-weight:600;color:' + c + '">' + e.systolic + '/' + e.diastolic + '</span>' +
+      (e.pulse ? ' <span style="color:var(--text-muted);font-size:0.85rem">| ' + e.pulse + ' bpm</span>' : '') + '</div></div>';
+  }).join('');
+}
+function saveBPReading() {
+  var systolic = document.getElementById('bp-systolic')?.value;
+  var diastolic = document.getElementById('bp-diastolic')?.value;
+  var pulse = document.getElementById('bp-pulse')?.value || '';
+  if (!systolic || !diastolic) { alert('Please enter systolic and diastolic.'); return; }
+  var entries = getBP();
+  var date = new Date().toISOString().split('T')[0];
+  entries.push({ systolic:parseInt(systolic), diastolic:parseInt(diastolic), pulse:pulse, date:date });
+  saveBP(entries);
+  document.getElementById('bp-systolic').value='';document.getElementById('bp-diastolic').value='';document.getElementById('bp-pulse').value='';
+  renderBP();
+  var btn=document.getElementById('bp-save-btn');if(btn){btn.textContent='✅ Saved!';btn.style.background='#4CAF50';setTimeout(function(){btn.textContent='💾 Save';btn.style.background='';},1500);}
+}
+document.getElementById('bp-save-btn')?.addEventListener('click', saveBPReading);
+document.getElementById('card-bp')?.addEventListener('click', function() { setTimeout(renderBP, 50); });
+
+// ============================================================
+// 🏆 Health Streaks
+// ============================================================
+var STREAK_STORAGE_KEY = 'healthmummy_streaks';
+function getStreakData() {
+  try { return JSON.parse(localStorage.getItem(STREAK_STORAGE_KEY)) || { current:0, longest:0, lastDate:'' }; }
+  catch(e) { return { current:0, longest:0, lastDate:'' }; }
+}
+function saveStreakData(d) { localStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(d)); }
+function updateStreaks() {
+  var data = getStreakData();
+  var today = new Date().toISOString().split('T')[0];
+  if (data.lastDate !== today) {
+    var y = new Date(); y.setDate(y.getDate()-1);
+    var yStr = y.toISOString().split('T')[0];
+    if (data.lastDate === yStr) { data.current += 1; }
+    else if (data.lastDate !== '') { data.current = 1; }
+    else { data.current = 1; }
+    if (data.current > data.longest) data.longest = data.current;
+    data.lastDate = today;
+    saveStreakData(data);
+  }
+  var curEl=document.getElementById('streak-current');
+  var lonEl=document.getElementById('streak-longest');
+  var visEl=document.getElementById('streak-last-visit');
+  var achEl=document.getElementById('streak-achievements');
+  if(curEl) curEl.textContent = data.current;
+  if(lonEl) lonEl.textContent = data.longest;
+  if(visEl) visEl.textContent = 'Streak: '+data.current+' day'+(data.current!==1?'s':'')+'! 🔥';
+  if(achEl) {
+    var badges = [];
+    if(data.longest>=3) badges.push('🔥 3-Day Streak');
+    if(data.longest>=7) badges.push('⭐ 7-Day Streak');
+    if(data.longest>=14) badges.push('🌟 2-Week Streak');
+    if(data.longest>=30) badges.push('🏆 30-Day Streak!');
+    if(data.longest>=100) badges.push('👑 100-Day Legend!');
+    if(badges.length===0) { achEl.innerHTML='<p style="color:var(--text-muted);font-size:0.85rem">Keep visiting daily!</p>'; }
+    else { achEl.innerHTML = badges.map(function(b) {
+      return '<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px;font-weight:600;font-size:0.9rem">'+b+'</div>';
+    }).join(''); }
+  }
+}
+document.getElementById('card-streaks')?.addEventListener('click', function() { setTimeout(updateStreaks, 50); });
+
+// ============================================================
+// 😴 Sleep Tracker
+// ============================================================
+var SLEEP_STORAGE_KEY = 'healthmummy_sleep';
+function getSleep() {
+  try { return JSON.parse(localStorage.getItem(SLEEP_STORAGE_KEY)) || []; }
+  catch(e) { return []; }
+}
+function saveSleep(entries) { localStorage.setItem(SLEEP_STORAGE_KEY, JSON.stringify(entries)); }
+function renderSleep() {
+  var h=document.getElementById('sleep-history');var a=document.getElementById('sleep-avg');if(!h)return;
+  var entries=getSleep();var recent=entries.slice(-7);
+  var avg=recent.length?Math.round(recent.reduce(function(s,e){return s+(e.hours||0);},0)/recent.length*10)/10:0;
+  if(a)a.textContent=avg;
+  if(entries.length===0){h.innerHTML='<p style="color:var(--text-muted);font-size:0.85rem">No sleep data yet.</p>';return;}
+  var ql=['','😴','😐','🙂','😊','😄'];
+  var sorted=entries.slice().reverse();
+  h.innerHTML=sorted.slice(0,14).map(function(e){
+    return '<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">'+
+      '<div><span style="font-size:0.8rem;color:var(--text-muted)">'+e.date+'</span><br><span>'+(e.bedtime||'??')+' - '+(e.waketime||'??')+'</span></div>'+
+      '<div style="text-align:right"><span style="font-weight:600;color:#4FC3F7">'+e.hours+'h</span><br><span style="font-size:0.8rem">'+(ql[e.quality]||'')+'</span></div></div>';
+  }).join('');
+}
+function saveSleepEntry(){
+  var bt=document.getElementById('sleep-bedtime')?.value;
+  var wt=document.getElementById('sleep-waketime')?.value;
+  var q=parseInt(document.getElementById('sleep-quality')?.value||'3');
+  if(!bt||!wt){alert('Please enter bedtime and wake time.');return;}
+  var b=bt.split(':').map(Number),w=wt.split(':').map(Number);
+  var hours=w[0]-b[0]+(w[1]-b[1])/60;if(hours<0)hours+=24;hours=Math.round(hours*10)/10;
+  var entries=getSleep();var d=new Date().toISOString().split('T')[0];
+  entries.push({date:d,bedtime:bt,waketime:wt,hours:hours,quality:q});saveSleep(entries);renderSleep();
+  var btn=document.getElementById('sleep-save-btn');if(btn){btn.textContent='✅ Saved!';btn.style.background='#4CAF50';setTimeout(function(){btn.textContent='💾 Log Sleep';btn.style.background='';},1500);}
+}
+document.getElementById('sleep-save-btn')?.addEventListener('click',saveSleepEntry);
+document.getElementById('card-sleep')?.addEventListener('click',function(){setTimeout(renderSleep,50);});
+document.getElementById('sleep-quality')?.addEventListener('input',function(){var l=document.getElementById('sleep-quality-label');if(l)l.textContent=this.value+'/5';});
+
+// ============================================================
+// 🏃 Activity Log
+// ============================================================
+var ACTIVITY_STORAGE_KEY='healthmummy_activity';
+function getActivity(){try{return JSON.parse(localStorage.getItem(ACTIVITY_STORAGE_KEY))||[];}catch(e){return[];}}
+function saveActivity(e){localStorage.setItem(ACTIVITY_STORAGE_KEY,JSON.stringify(e));}
+function renderActivity(){
+  var h=document.getElementById('activity-history');var w=document.getElementById('activity-week-steps');if(!h)return;
+  var entries=getActivity();
+  var wa=new Date(Date.now()-7*24*60*60*1000).toISOString().split('T')[0];
+  var we=entries.filter(function(e){return e.date>=wa;});
+  var ws=we.reduce(function(s,e){return s+(parseInt(e.steps)||0);},0);
+  if(w)w.textContent=ws;
+  if(entries.length===0){h.innerHTML='<p style="color:var(--text-muted);font-size:0.85rem">No activity logged yet.</p>';return;}
+  var sorted=entries.slice().reverse();
+  h.innerHTML=sorted.slice(0,14).map(function(e){
+    return '<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">'+
+      '<div><span style="font-size:0.8rem;color:var(--text-muted)">'+e.date+'</span><br><span>'+(e.type||'Activity')+'</span></div>'+
+      '<span style="font-weight:600;color:#4CAF50">'+(parseInt(e.steps)||0)+' steps</span></div>';
+  }).join('');
+}
+function saveActivityEntry(){
+  var steps=document.getElementById('activity-steps')?.value;
+  var type=document.getElementById('activity-type')?.value||'Walking';
+  if(!steps){alert('Please enter step count.');return;}
+  var entries=getActivity();var d=new Date().toISOString().split('T')[0];
+  entries.push({steps:parseInt(steps),type:type,date:d});saveActivity(entries);
+  document.getElementById('activity-steps').value='';renderActivity();
+  var btn=document.getElementById('activity-save-btn');if(btn){btn.textContent='✅ Saved!';btn.style.background='#4CAF50';setTimeout(function(){btn.textContent='💾 Log';btn.style.background='';},1500);}
+}
+document.getElementById('activity-save-btn')?.addEventListener('click',saveActivityEntry);
+document.getElementById('card-activity')?.addEventListener('click',function(){setTimeout(renderActivity,50);});
+
+// Init streaks on load
+setTimeout(updateStreaks, 100);
+
+// Health tip
     showHealthTip();
 })();

@@ -179,7 +179,32 @@
                     <h3>Medicine Reminder</h3>
                     <p>Never miss your medications</p>
                 </div>
-                <div class="feature-card" id="card-health-tips" style="display: none;">
+                                <div class="feature-card" id="card-meals">
+                    <div class="card-icon">🥗</div>
+                    <h3>Meal Tracker</h3>
+                    <p>Log meals and track daily calories</p>
+                </div>
+                <div class="feature-card" id="card-bp">
+                    <div class="card-icon">❤️</div>
+                    <h3>Blood Pressure</h3>
+                    <p>Track BP readings over time</p>
+                </div>
+                <div class="feature-card" id="card-streaks">
+                    <div class="card-icon">🏆</div>
+                    <h3>Health Streaks</h3>
+                    <p>Daily streaks & achievements</p>
+                </div>
+                <div class="feature-card" id="card-sleep">
+                    <div class="card-icon">😴</div>
+                    <h3>Sleep Tracker</h3>
+                    <p>Log sleep hours and quality</p>
+                </div>
+                <div class="feature-card" id="card-activity">
+                    <div class="card-icon">🏃</div>
+                    <h3>Activity Log</h3>
+                    <p>Track steps and daily activity</p>
+                </div>
+<div class="feature-card" id="card-health-tips" style="display: none;">
                     <div class="card-icon">☀️</div>
                     <h3>Health Tips</h3>
                     <p>Daily wellness tips</p>
@@ -656,7 +681,89 @@
         </div>
     </main>
 
-    <!-- Profile Section -->
+    
+        <!-- Meal Tracker Section -->
+        <main id="meal-section" class="view-section" style="display:none" aria-label="Meal Tracker">
+            <div class="tool-container" style="padding:20px">
+                <h2>🥗 Meal Tracker</h2>
+                <p style="color:var(--text-muted);font-size:0.9rem">Log meals and track daily calories.</p>
+                <div style="max-width:400px;display:flex;flex-direction:column;gap:12px">
+                    <div><label>Meal:</label><input type="text" id="meal-name" placeholder="e.g. Chicken Salad" style="width:100%;background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:12px;color:white"></div>
+                    <div style="display:flex;gap:10px">
+                        <select id="meal-type" style="flex:1;background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:12px;color:white"><option>🌅 Breakfast</option><option>☀️ Lunch</option><option>🌙 Dinner</option><option>🍪 Snack</option></select>
+                        <input type="number" id="meal-calories" placeholder="Calories" style="flex:1;background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:12px;color:white">
+                    </div>
+                    <button class="primary-btn" id="meal-save-btn">💾 Log Meal</button>
+                </div>
+                <h3>Today: <span id="meal-today-calories" style="color:#4CAF50">0</span> cal</h3>
+                <div id="meal-history" style="max-height:300px;overflow-y:auto"><p style="color:var(--text-muted);font-size:0.85rem">No meals logged.</p></div>
+            </div>
+        </main>
+
+        <!-- Blood Pressure Section -->
+        <main id="bp-section" class="view-section" style="display:none" aria-label="Blood Pressure">
+            <div class="tool-container" style="padding:20px">
+                <h2>❤️ Blood Pressure</h2>
+                <p style="color:var(--text-muted);font-size:0.9rem">Track your blood pressure readings.</p>
+                <div style="max-width:400px;display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;gap:10px">
+                        <div><label>Systolic:</label><input type="number" id="bp-systolic" placeholder="120" style="width:100%;background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:12px;color:white"></div>
+                        <div><label>Diastolic:</label><input type="number" id="bp-diastolic" placeholder="80" style="width:100%;background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:12px;color:white"></div>
+                    </div>
+                    <div><label>Pulse:</label><input type="number" id="bp-pulse" placeholder="72" style="width:100%;background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:12px;color:white"></div>
+                    <button class="primary-btn" id="bp-save-btn">💾 Save</button>
+                </div>
+                <div id="bp-history" style="max-height:300px;overflow-y:auto"><p style="color:var(--text-muted);font-size:0.85rem">No readings yet.</p></div>
+            </div>
+        </main>
+
+        <!-- Health Streaks Section -->
+        <main id="streak-section" class="view-section" style="display:none" aria-label="Health Streaks">
+            <div class="tool-container" style="padding:20px;text-align:center">
+                <h2>🏆 Health Streaks</h2>
+                <p style="color:var(--text-muted);font-size:0.9rem">Daily streaks and achievements.</p>
+                <div style="display:flex;justify-content:center;gap:30px;margin:25px 0">
+                    <div><div id="streak-current" style="font-size:3rem;font-weight:700;color:#FF6B35">0</div><div>Current 🔥</div></div>
+                    <div><div id="streak-longest" style="font-size:3rem;font-weight:700;color:#4CAF50">0</div><div>Longest 🏆</div></div>
+                </div>
+                <div id="streak-achievements"><p style="color:var(--text-muted)">Keep visiting daily!</p></div>
+                <div id="streak-last-visit" style="color:var(--text-muted);font-size:0.8rem">First visit today!</div>
+            </div>
+        </main>
+
+        <!-- Sleep Tracker Section -->
+        <main id="sleep-section" class="view-section" style="display:none" aria-label="Sleep Tracker">
+            <div class="tool-container" style="padding:20px">
+                <h2>😴 Sleep Tracker</h2>
+                <p style="color:var(--text-muted);font-size:0.9rem">Log sleep hours and quality.</p>
+                <div style="max-width:400px;display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;gap:10px">
+                        <div><label>Bedtime:</label><input type="time" id="sleep-bedtime" style="width:100%;background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:12px;color:white"></div>
+                        <div><label>Wake:</label><input type="time" id="sleep-waketime" style="width:100%;background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:12px;color:white"></div>
+                    </div>
+                    <div><label>Quality:</label><input type="range" id="sleep-quality" min="1" max="5" value="3" style="width:100%"><span id="sleep-quality-label" style="color:#4FC3F7">3/5</span></div>
+                    <button class="primary-btn" id="sleep-save-btn">💾 Log Sleep</button>
+                </div>
+                <h3>Avg: <span id="sleep-avg" style="color:#4FC3F7">0</span> hrs</h3>
+                <div id="sleep-history" style="max-height:300px;overflow-y:auto"><p style="color:var(--text-muted)">No data yet.</p></div>
+            </div>
+        </main>
+
+        <!-- Activity Log Section -->
+        <main id="activity-section" class="view-section" style="display:none" aria-label="Activity Log">
+            <div class="tool-container" style="padding:20px">
+                <h2>🏃 Activity Log</h2>
+                <p style="color:var(--text-muted);font-size:0.9rem">Track daily steps and activity.</p>
+                <div style="max-width:400px;display:flex;flex-direction:column;gap:12px">
+                    <div><label>Steps:</label><input type="number" id="activity-steps" placeholder="8000" style="width:100%;background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:12px;color:white"></div>
+                    <div><label>Type:</label><select id="activity-type" style="width:100%;background:#2a2a2a;border:1px solid #444;border-radius:8px;padding:12px;color:white"><option>🚶 Walking</option><option>🏃 Running</option><option>🚴 Cycling</option><option>🏋️ Gym</option></select></div>
+                    <button class="primary-btn" id="activity-save-btn">💾 Log</button>
+                </div>
+                <h3>Week: <span id="activity-week-steps" style="color:#4CAF50">0</span> steps</h3>
+                <div id="activity-history" style="max-height:300px;overflow-y:auto"><p style="color:var(--text-muted)">No activity logged.</p></div>
+            </div>
+        </main>
+<!-- Profile Section -->
     <main id="profile-section" class="view-section" style="display:none;" aria-label="Profile Settings">
         <div class="tool-container">
             <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
