@@ -398,6 +398,7 @@ document.getElementById('card-breathe').addEventListener('click', () => showSect
 document.getElementById('card-water').addEventListener('click', () => showSection('water-section'));
 document.getElementById('card-symptoms').addEventListener('click', () => showSection('symptom-section'));
 document.getElementById('card-medicine').addEventListener('click', () => showSection('medicine-section'));
+document.getElementById('card-injury-camera')?.addEventListener('click', () => showSection('injury-section'));
 document.getElementById('card-logins')?.addEventListener('click', () => {
     showSection('login-history-section');
     setTimeout(loadLoginHistory, 50);
