@@ -2163,6 +2163,148 @@ applyTheme(getSavedTheme());
 // ============================================================
 // Initialize all features on page load
 // ============================================================
+// === Validation Helpers ===
+function sanitize(s){return (s||'').replace(/<[^>]*>/g,'').trim()}
+function isValidEmail(e){return /^[\w.\-]+@[a-zA-Z\d\-]+\.[a-zA-Z]{2,}$/.test(e)}
+function getPwdErrors(p){var e=[];if(p.length<8)e.push('8+ chars');if(!/[A-Z]/.test(p))e.push('uppercase');if(!/[0-9]/.test(p))e.push('number');if(!/[!@#$%^&*(),.?:{}|<>]/.test(p))e.push('special char');return e}
+function isValidPhone(p){return p===''||/^[\d\-\+\s()]{7,20}$/.test(p)}
+function showFieldError(id,msg){var el=document.getElementById(id);if(el){el.textContent=msg;el.style.display=msg?'block':'none';var inpId=id.replace('-error','');var inp=document.getElementById(inpId);if(inp&&(inp.tagName==='INPUT'||inp.tagName==='SELECT'||inp.tagName==='TEXTAREA')){if(msg)inp.classList.add('error');else inp.classList.remove('error')}}}
+function clearAllErrors(){document.querySelectorAll('.field-error').forEach(function(el){el.textContent='';el.style.display='none'});document.querySelectorAll('input.error').forEach(function(el){el.classList.remove('error')});document.querySelectorAll('input.valid').forEach(function(el){el.classList.remove('valid')})}
+
+// === User Auth ===
+var currentUser=null;
+function loadCurrentUser(){try{var s=localStorage.getItem('healthmummy_current_user');if(s)currentUser=JSON.parse(s)}catch(e){}}
+function saveCurrentUser(u){currentUser=u;localStorage.setItem('healthmummy_current_user',JSON.stringify(u))}
+function getAllUsers(){try{return JSON.parse(localStorage.getItem('healthmummy_users')||'[]')}catch(e){return[]}}
+function saveAllUsers(u){localStorage.setItem('healthmummy_users',JSON.stringify(u))}
+function isLoggedIn(){return currentUser!==null}
+function showToast(m){var t=document.querySelector('.toast-notification');if(t)t.remove();t=document.createElement('div');t.className='toast-notification';t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.remove()},300)},3000)}
+function openAuthModal(t){var m=document.getElementById('pwd-strength-meter');if(m)m.style.display='none';var o=document.getElementById('auth-modal-overlay');if(!o)return;o.style.display='flex';document.getElementById('login-form').style.display=t==='register'?'none':'block';document.getElementById('register-form').style.display=t==='register'?'block':'none';o.setAttribute('aria-labelledby',t==='register'?'reg-modal-title':'auth-modal-title')}
+function closeAuthModal(){var o=document.getElementById('auth-modal-overlay');if(o)o.style.display='none'}
+
+// === Registration with validation ===
+function handleRegister(){clearAllErrors();var n=sanitize(document.getElementById('reg-name')?.value||'');var e=sanitize(document.getElementById('reg-email')?.value||'');var p=document.getElementById('reg-password')?.value||'';var c=document.getElementById('reg-confirm')?.value||'';var hasErr=false;if(!n){showFieldError('reg-name-error','Name is required');hasErr=true}if(!e){showFieldError('reg-email-error','Email is required');hasErr=true}else if(!isValidEmail(e)){showFieldError('reg-email-error','Invalid email format');hasErr=true}if(!p){showFieldError('reg-password-error','Password is required');hasErr=true}else{var pwdErrs=getPwdErrors(p);if(pwdErrs.length){showFieldError('reg-password-error','Need: '+pwdErrs.join(', '));hasErr=true}}if(!c){showFieldError('reg-confirm-error','Confirm your password');hasErr=true}else if(p!==c){showFieldError('reg-confirm-error','Passwords do not match');hasErr=true}if(hasErr)return;var u=getAllUsers();if(u.find(function(x){return x.email===e})){showFieldError('reg-email-error','Email already registered');return}var nu={id:'u_'+Date.now(),name:n,email:e,password:p,phone:'',dob:'',createdAt:new Date().toISOString()};u.push(nu);saveAllUsers(u);saveCurrentUser({id:nu.id,name:n,email:e,phone:'',dob:'',createdAt:nu.createdAt});closeAuthModal();showToast('Welcome '+n+'!');updateProfileDisplay()}
+
+function handleLogin(){clearAllErrors();var e=sanitize(document.getElementById('login-email')?.value||'');var p=document.getElementById('login-password')?.value||'';var hasErr=false;if(!e){showFieldError('login-email-error','Email is required');hasErr=true}else if(!isValidEmail(e)){showFieldError('login-email-error','Invalid email format');hasErr=true}if(!p){showFieldError('login-password-error','Password is required');hasErr=true}if(hasErr)return;var u=getAllUsers();var user=u.find(function(x){return x.email===e&&x.password===p});if(!user){showFieldError('login-email-error','Invalid email or password');showFieldError('login-password-error','Invalid email or password');return}saveCurrentUser({id:user.id,name:user.name,email:user.email,phone:user.phone||'',dob:user.dob||'',createdAt:user.createdAt});closeAuthModal();showToast('Welcome '+user.name);updateProfileDisplay()}
+function handleLogout(){localStorage.removeItem('healthmummy_current_user');currentUser=null;showToast('Signed out');updateProfileDisplay();showSection('dashboard-section')}
+function updateProfileDisplay(){var ne=document.getElementById('profile-display-name');var ee=document.getElementById('profile-display-email');var te=document.getElementById('profile-account-type');if(isLoggedIn()){if(ne)ne.textContent=currentUser.name;if(ee)ee.textContent=currentUser.email;if(te)te.textContent='Registered User'}else{if(ne)ne.textContent='Guest';if(ee)ee.textContent='Not signed in';if(te)te.textContent='Guest'}}
+function loadProfile(){if(!isLoggedIn()){['profile-name','profile-email','profile-phone','profile-dob'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=''});updateProfileDisplay();return}document.getElementById('profile-name').value=currentUser.name||'';document.getElementById('profile-email').value=currentUser.email||'';document.getElementById('profile-phone').value=currentUser.phone||'';document.getElementById('profile-dob').value=currentUser.dob||'';updateProfileDisplay()}
+
+function saveProfile(){if(!isLoggedIn()){showToast('Sign in first');return}clearAllErrors();var n=sanitize(document.getElementById('profile-name').value||'');var e=sanitize(document.getElementById('profile-email').value||'');var p=sanitize(document.getElementById('profile-phone').value||'');var d=document.getElementById('profile-dob').value;var hasErr=false;if(!n){showFieldError('profile-name-error','Name is required');hasErr=true}if(!e){showFieldError('profile-email-error','Email is required');hasErr=true}else if(!isValidEmail(e)){showFieldError('profile-email-error','Invalid email format');hasErr=true}if(p&&!isValidPhone(p)){showFieldError('profile-phone-error','Invalid phone format');hasErr=true}if(hasErr)return;var u=getAllUsers();var idx=u.findIndex(function(x){return x.id===currentUser.id});if(idx!==-1){u[idx].name=n;u[idx].email=e;u[idx].phone=p;u[idx].dob=d;saveAllUsers(u);currentUser.name=n;currentUser.email=e;currentUser.phone=p;currentUser.dob=d;saveCurrentUser(currentUser);updateProfileDisplay();showToast('Profile updated!')}else{showToast('Error saving profile')}}
+function getAppts(){try{return JSON.parse(localStorage.getItem('healthmummy_appointments')||'[]')}catch(e){return[]}}
+function saveAppts(a){localStorage.setItem('healthmummy_appointments',JSON.stringify(a))}
+var apptFilter='all';
+function renderAppointments(){var c=document.getElementById('appointment-list');if(!c)return;var appts=getAppts();var now=new Date();if(apptFilter==='upcoming'){appts=appts.filter(function(a){return new Date(a.date+'T'+a.time)>now})}else if(apptFilter==='past'){appts=appts.filter(function(a){return new Date(a.date+'T'+a.time)<=now})}var html='';appts.forEach(function(a){var d=new Date(a.date+'T'+a.time);var uc=d>now;var sc='upcoming';var st='Upcoming';if(a.status==='cancelled'){sc='cancelled';st='Cancelled'}else if(!uc){sc='past';st='Past'}var ds=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});var ts=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});html+='<div class="appointment-card"><div class="appt-info"><h4>'+a.doctor+'</h4><p>'+ds+' at '+ts+'</p>';if(a.notes){html+='<p style="margin-top:6px;font-style:italic;">'+a.notes+'</p>'}html+='</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;"><span class="appt-status '+sc+'">'+st+'</span>';if(uc){html+='<button onclick="delAppt(\''+a.id+'\')" style="background:#e74c3c;color:white;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;">Cancel</button>'}html+='</div></div>'});c.innerHTML=html||'<p style="text-align:center;color:var(--text-secondary);padding:40px 0;">No appointments found</p>'}
+function delAppt(id){saveAppts(getAppts().filter(function(a){return a.id!==id}));renderAppointments();showToast('Appointment cancelled')}
+
+// === New Appointment with date validation ===
+function handleNewAppt(){var doc=document.getElementById('appt-doctor')?.value;var date=document.getElementById('appt-date')?.value;var time=document.getElementById('appt-time')?.value;var notes=document.getElementById('appt-notes')?.value.trim();var hasErr=false;if(!doc){showToast('Please select a doctor');hasErr=true}if(!date){showToast('Please pick a date');hasErr=true}else{var today=new Date();today.setHours(0,0,0,0);var apptDate=new Date(date+'T23:59:59');if(apptDate<today){showToast('Date must be today or later');hasErr=true}}if(!time){showToast('Please pick a time');hasErr=true}if(hasErr)return;var appt={id:'a_'+Date.now(),doctor:doc,date:date,time:time,notes:notes||'',status:'upcoming',createdBy:currentUser?currentUser.email:'guest',createdAt:new Date().toISOString()};var appts=getAppts();appts.push(appt);saveAppts(appts);['appt-doctor','appt-date','appt-time','appt-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=''});document.getElementById('add-appointment-form').style.display='none';renderAppointments();showToast('Appointment scheduled!')}
+
+
+// === Field validators for blur ===
+function validateField(fieldId,errorId,validateFn){var el=document.getElementById(fieldId);if(!el)return;el.addEventListener('blur',function(){var val=el.value.trim();var err=validateFn(val);if(err){showFieldError(errorId,err);el.classList.remove('valid');el.classList.add('error')}else{showFieldError(errorId,'');var e=document.getElementById(errorId);if(e)e.style.display='block';el.classList.remove('error');if(val){el.classList.add('valid')}else{el.classList.remove('valid')}}});el.addEventListener('input',function(){showFieldError(errorId,'');el.classList.remove('valid');el.classList.remove('error')})}
+
+
+// === Blur validation rules ===
+
+// === Password strength meter ===
+function updatePwdMeter(){
+  var pwd=document.getElementById('reg-password')?.value||'';
+  var meter=document.getElementById('pwd-strength-meter');
+  if(!meter)return;
+  if(pwd.length===0){meter.style.display='none';return}
+  meter.style.display='block';
+  
+  // Check requirements
+  var hasMin=pwd.length>=8;
+  var hasUpper=/[A-Z]/.test(pwd);
+  var hasNumber=/[0-9]/.test(pwd);
+  var hasSpecial=/[!@#$%^&*(),.?:{}|<>]/.test(pwd);
+  
+  // Update requirement list
+  var reqs=[
+    {id:'pwd-req-length',met:hasMin,icon:hasMin?'✓':'○'},
+    {id:'pwd-req-upper',met:hasUpper,icon:hasUpper?'✓':'○'},
+    {id:'pwd-req-number',met:hasNumber,icon:hasNumber?'✓':'○'},
+    {id:'pwd-req-special',met:hasSpecial,icon:hasSpecial?'✓':'○'}
+  ];
+  reqs.forEach(function(r){
+    var el=document.getElementById(r.id);
+    if(!el)return;
+    el.className=r.met?'met':'unmet';
+    var icon=el.querySelector('.pwd-req-icon');
+    if(icon){icon.textContent=r.icon;icon.className='pwd-req-icon '+(r.met?'met':'unmet')}
+  });
+  
+  // Calculate strength
+  var score=0;
+  if(hasMin)score++;
+  if(hasUpper)score++;
+  if(hasNumber)score++;
+  if(hasSpecial)score++;
+  
+  // Update segments
+  var segments=['pwd-seg-0','pwd-seg-1','pwd-seg-2','pwd-seg-3'];
+  var classes=['','active-weak','active-fair','active-good','active-strong'];
+  var label=document.getElementById('pwd-meter-label');
+  var strengthLabels=['Weak','Weak','Fair','Good','Strong'];
+  
+  segments.forEach(function(id,i){
+    var seg=document.getElementById(id);
+    if(!seg)return;
+    seg.className='pwd-meter-segment';
+    if(i<score)seg.classList.add(classes[score]);
+  });
+  
+  if(label)label.textContent='Strength: '+strengthLabels[score];
+  if(label)label.style.color=score<=1?'#e74c3c':score===2?'#f39c12':score===3?'#3498db':'#2ecc71';
+}
+
+function setupBlurValidation(){validateField('login-email','login-email-error',function(v){if(!v)return 'Email is required';if(!isValidEmail(v))return 'Invalid email format';return null});validateField('login-password','login-password-error',function(v){if(!v)return 'Password is required';return null});validateField('reg-name','reg-name-error',function(v){if(!v)return 'Name is required';return null});validateField('reg-email','reg-email-error',function(v){if(!v)return 'Email is required';if(!isValidEmail(v))return 'Invalid email format';return null});validateField('reg-password','reg-password-error',function(v){if(!v)return 'Password is required';var pwdErrs=getPwdErrors(v);if(pwdErrs.length)return 'Need: '+pwdErrs.join(', ');return null});validateField('reg-confirm','reg-confirm-error',function(v){if(!v)return 'Confirm your password';var p=document.getElementById('reg-password')?.value||'';if(v!==p)return 'Passwords do not match';return null});validateField('profile-name','profile-name-error',function(v){if(!v)return 'Name is required';return null});validateField('profile-email','profile-email-error',function(v){if(!v)return 'Email is required';if(!isValidEmail(v))return 'Invalid email format';return null});validateField('profile-phone','profile-phone-error',function(v){if(v&&!isValidPhone(v))return 'Invalid phone format';return null});validateField('appt-doctor','appt-doctor-error',function(v){if(!v)return 'Select a doctor';return null});validateField('appt-date','appt-date-error',function(v){if(!v)return 'Pick a date';var today=new Date();today.setHours(0,0,0,0);var apptDate=new Date(v+'T23:59:59');if(apptDate<today)return 'Must be today or later';return null});validateField('appt-time','appt-time-error',function(v){if(!v)return 'Pick a time';return null})}
+
+
+// === Card click handlers ===
+document.getElementById('card-appointments')?.addEventListener('click', function(){showSection('appointment-section');setTimeout(renderAppointments,100)});
+document.getElementById('card-profile')?.addEventListener('click', function(){showSection('profile-section');setTimeout(loadProfile,100)});
+
+
+document.getElementById('hero-cta-nav-btn')?.addEventListener('click',function(){openAuthModal('register')});
+document.getElementById('hero-cta-main-btn')?.addEventListener('click',function(){openAuthModal('register')});
+
+// === Keyboard handlers for feature cards ===
+document.getElementById('card-chat')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-hospital')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-blood')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-injury-camera')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-bmi')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-emergency')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-breathe')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-water')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-symptoms')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-medicine')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-logins')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-analytics')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-appointments')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+document.getElementById('card-profile')?.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){e.preventDefault();e.target.click()}});
+
+// === Password visibility toggle ===
+function togglePasswordVisibility(fieldId,btn){var f=document.getElementById(fieldId);if(!f)return;if(f.type==='password'){f.type='text';btn.classList.add('showing');btn.setAttribute('aria-label','Hide password');btn.querySelector('svg').innerHTML='<path d=\"M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24\"/><line x1=\"1\" y1=\"1\" x2=\"23\" y2=\"23\"/></path>';}else{f.type='password';btn.classList.remove('showing');btn.setAttribute('aria-label','Show password');btn.querySelector('svg').innerHTML='<path d=\"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></path>';}}
+// === Event listeners ===
+document.getElementById('auth-close-btn')?.addEventListener('click',closeAuthModal);
+document.getElementById('auth-modal-overlay')?.addEventListener('click',function(e){if(e.target===e.currentTarget)closeAuthModal()});
+document.getElementById('show-register-link')?.addEventListener('click',function(e){e.preventDefault();openAuthModal('register')});
+document.getElementById('show-login-link')?.addEventListener('click',function(e){e.preventDefault();openAuthModal('login')});
+document.getElementById('register-submit-btn')?.addEventListener('click',handleRegister);
+document.getElementById('login-submit-btn')?.addEventListener('click',handleLogin);
+document.getElementById('profile-logout-btn')?.addEventListener('click',handleLogout);
+document.getElementById('save-profile-btn')?.addEventListener('click',saveProfile);
+document.getElementById('save-appointment-btn')?.addEventListener('click',handleNewAppt);
+loadCurrentUser();
+setupBlurValidation();
+document.querySelector('[id=\"reg-password\"] + .pwd-toggle-btn')?.addEventListener('click',function(){togglePasswordVisibility('reg-password',this)});
+document.getElementById('reg-password')?.addEventListener('input',updatePwdMeter);
+document.getElementById('reg-password')?.addEventListener('input',function(){showFieldError('reg-confirm-error','')});
+
 (function initFeatures() {
     // Water: set initial state
     updateWaterUI();

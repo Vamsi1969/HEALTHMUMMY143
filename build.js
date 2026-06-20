@@ -59,12 +59,12 @@ const envVars = parseEnv(envPath);
 
 // Replace placeholders
 let output = template;
-output = output.replace(/__OPENROUTER_API_KEY__/g, envVars.OPENROUTER_API_KEY || '');
-output = output.replace(/__OPENROUTER_MODEL__/g, envVars.OPENROUTER_MODEL || 'google/gemma-4-31b-it:free');
+output = output.replace(/__AI_API_KEY__/g, envVars.OPENROUTER_API_KEY || '');
+output = output.replace(/__AI_MODEL__/g, envVars.OPENROUTER_MODEL || 'llama-3.3-70b-versatile');
 
 // Write config.js
 fs.writeFileSync(outputPath, output, 'utf-8');
 
 console.log(`✅ Generated config.js from ${envFile}`);
-console.log(`   Model: ${envVars.OPENROUTER_MODEL || 'google/gemma-4-31b-it:free (default)'}`);
+console.log(`   Model: ${envVars.OPENROUTER_MODEL || 'llama-3.3-70b-versatile (default)'}`);
 console.log(`   API Key: ${envVars.OPENROUTER_API_KEY ? '✓ Set' : '✗ Not set (fallback mode)'}`);

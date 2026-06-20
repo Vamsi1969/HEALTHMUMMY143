@@ -1,0 +1,9 @@
+services:
+  pocketbase:
+    image: adrianmusante/pocketbase:latest
+    container_name: healthmummy-pb
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./pb_data:/pocketbase/pb_data

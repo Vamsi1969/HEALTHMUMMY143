@@ -6,3 +6,8 @@ config.js
 
 # Node modules (if any)
 node_modules/
+
+# PocketBase binaries
+pocketbase.exe
+pocketbase.zip
+pb_data/

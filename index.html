@@ -6,39 +6,89 @@
     <title>Health Assistant</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-    <!-- Login Modal -->
-    <div id="login-modal" class="login-modal">
-        <div class="login-card">
-            <h2>Welcome to Health Mummy</h2>
-            <p>Please sign in to continue</p>
-            
-            <div id="g_id_onload"
-                 data-client_id="143695571657-2bqbi876s0nrrpg7e2lotcnmlh5b0f0o.apps.googleusercontent.com"
-                 data-context="signin"
-                 data-ux_mode="popup"
-                 data-callback="handleCredentialResponse"
-                 data-auto_prompt="false">
+    <!-- Hero Landing Section -->
+    <div id="hero-section" class="hero-section">
+        <nav class="hero-nav" aria-label="Main navigation">
+            <div class="hero-logo">
+                <span class="hero-logo-icon">🏥</span>
+                <span class="hero-logo-text">Health Mummy</span>
             </div>
+            <button id="hero-cta-nav-btn" class="hero-nav-cta">Get Started</button>
+        </nav>
+        
+        <main class="hero-main">
+            <div class="hero-badge-container">
+                <span class="hero-badge">✨ AI-Powered Health Assistant</span>
+            </div>
+            <h1 class="hero-title">
+                Your Personal<br>
+                <span class="hero-title-highlight">Well-being Guide</span>
+            </h1>
+            <p class="hero-subtitle">
+                Chat with AI about symptoms, track your health journey, set medicine reminders,
+                and discover daily wellness tips — all in one beautiful app.
+            </p>
             
-            <div class="g_id_signin"
-                 data-type="standard"
-                 data-shape="rectangular"
-                 data-theme="outline"
-                 data-text="signin_with"
-                 data-size="large"
-                 data-logo_alignment="left"
-                 style="display: flex; justify-content: center;">
+            <button id="hero-cta-main-btn" class="hero-cta-primary">
+                Get Started Free
+                <span class="hero-cta-arrow">→</span>
+            </button>
+            
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <span class="hero-stat-value">150+</span>
+                    <span class="hero-stat-label">Health Topics</span>
+                </div>
+                <div class="hero-stat-dot"></div>
+                <div class="hero-stat">
+                    <span class="hero-stat-value">10+</span>
+                    <span class="hero-stat-label">Wellness Tools</span>
+                </div>
+                <div class="hero-stat-dot"></div>
+                <div class="hero-stat">
+                    <span class="hero-stat-value">24/7</span>
+                    <span class="hero-stat-label">AI Support</span>
+                </div>
+            </div>
+        </main>
+        
+        <div class="hero-features">
+            <div class="hero-feature-card">
+                <div class="hero-feature-icon">💬</div>
+                <h4>AI Symptom Checker</h4>
+                <p>Describe how you feel and get instant AI guidance</p>
+            </div>
+            <div class="hero-feature-card">
+                <div class="hero-feature-icon">📋</div>
+                <h4>Symptom Journal</h4>
+                <p>Track daily symptoms &amp; identify health patterns</p>
+            </div>
+            <div class="hero-feature-card">
+                <div class="hero-feature-icon">💊</div>
+                <h4>Medicine Reminders</h4>
+                <p>Never miss a dose with smart notifications</p>
+            </div>
+            <div class="hero-feature-card">
+                <div class="hero-feature-icon">📊</div>
+                <h4>Health Analytics</h4>
+                <p>Visual insights into your well-being trends</p>
             </div>
         </div>
+        
+        <footer class="hero-footer">
+            <p>Made with 💚 for your health journey</p>
+        </footer>
     </div>
+
 
     <div class="app-container" id="main-app" style="display: none;">
         <header class="app-header">
-            <button id="back-btn" class="icon-btn" style="display: none;">
+            <button aria-label="Go back" id="back-btn" class="icon-btn" style="display: none;">
                 <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
             </button>
             <div class="header-title">
@@ -49,14 +99,35 @@
                 <span id="session-duration">0m</span>
                 <div style="font-size: 0.6rem; color: #aaa;">active</div>
             </div>
-            <button id="theme-toggle" class="icon-btn" title="Toggle theme">
+            <select id="lang-selector" class="lang-selector" title="Select language — hover for code" aria-label="Select application language">
+                <option value="en" title="en-US — English">🇬🇧 English (en-US)</option>
+                <option value="te" title="te-IN — తెలుగు">🇮🇳 తెలుగు (te-IN)</option>
+                <option value="hi" title="hi-IN — हिन्दी">🇮🇳 हिन्दी (hi-IN)</option>
+                <option value="ta" title="ta-IN — தமிழ்">🇮🇳 தமிழ் (ta-IN)</option>
+                <option value="kn" title="kn-IN — ಕನ್ನಡ">🇮🇳 ಕನ್ನಡ (kn-IN)</option>
+                <option value="ml" title="ml-IN — മലയാളം">🇮🇳 മലയാളം (ml-IN)</option>
+                <option value="bn" title="bn-IN — বাংলা">🇮🇳 বাংলা (bn-IN)</option>
+                <option value="mr" title="mr-IN — मराठी">🇮🇳 मराठी (mr-IN)</option>
+                <option value="gu" title="gu-IN — ગુજરાતી">🇮🇳 ગુજરાતી (gu-IN)</option>
+                <option value="pa" title="pa-IN — ਪੰਜਾਬੀ">🇮🇳 ਪੰਜਾਬੀ (pa-IN)</option>
+                <option value="or" title="or-IN — ଓଡ଼ିଆ">🇮🇳 ଓଡ଼ିଆ (or-IN)</option>
+                <option value="as" title="as-IN — অসমীয়া">🇮🇳 অসমীয়া (as-IN)</option>
+                <option value="ur" title="ur-IN — اردو">🇮🇳 اردو (ur-IN)</option>
+                <option value="ne" title="ne-IN — नेपाली">🇮🇳 नेपाली (ne-IN)</option>
+                <option value="sd" title="sd-IN — सिन्धी">🇮🇳 सिन्धी (sd-IN)</option>
+                <option value="kok" title="kok-IN — कोंकणी">🇮🇳 कोंकणी (kok-IN)</option>
+                <option value="mai" title="mai-IN — मैथिली">🇮🇳 मैथिली (mai-IN)</option>
+                <option value="doi" title="doi-IN — डोगरी">🇮🇳 डोगरी (doi-IN)</option>
+                <option value="sa" title="sa-IN — संस्कृतम्">🇮🇳 संस्कृतम् (sa-IN)</option>
+            </select>
+            <button aria-label="Toggle theme" id="theme-toggle" class="icon-btn" title="Toggle theme">
                 <svg id="theme-icon-sun" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
                 <svg id="theme-icon-moon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
             </button>
         </header>
 
         <!-- Dashboard Menu -->
-        <main id="dashboard-section" class="view-section" style="display: flex;">
+        <main id="dashboard-section" class="view-section" style="display: flex;" aria-label="Dashboard">
             <div class="dashboard-grid">
                 <div class="feature-card" id="card-chat">
                     <div class="card-icon">💬</div>
@@ -72,6 +143,11 @@
                     <div class="card-icon">🩸</div>
                     <h3>Blood Banks</h3>
                     <p>Find local blood donation centers</p>
+                </div>
+                <div class="feature-card" id="card-injury-camera">
+                    <div class="card-icon">📷</div>
+                    <h3>Injury Analysis</h3>
+                    <p>Snap a photo for instant first aid guidance</p>
                 </div>
                 <div class="feature-card" id="card-bmi">
                     <div class="card-icon">⚖️</div>
@@ -118,37 +194,48 @@
                     <h3>Analytics</h3>
                     <p>Login stats & charts</p>
                 </div>
+     
+                <div class="feature-card" id="card-appointments">
+                    <div class="card-icon">📅</div>
+                    <h3>Appointments</h3>
+                    <p>Schedule & manage visits</p>
+                </div>
+                <div class="feature-card" id="card-profile">
+                    <div class="card-icon">👤</div>
+                    <h3>My Profile</h3>
+                    <p>Manage your account</p>
+                </div>
             </div>
             
             <!-- Health Tip Banner on Dashboard -->
             <div id="health-tip-banner" class="health-tip-banner">
                 <div class="tip-icon">☀️</div>
                 <div class="tip-content">
-                    <div id="health-tip-text">Loading health tip...</div>
+                    <div id="health-tip-text" aria-live="polite" aria-atomic="true">Loading health tip...</div>
                 </div>
-                <button id="tip-next-btn" class="tip-next-btn" title="Next tip">↻</button>
+                <button aria-label="Next tip" id="tip-next-btn" class="tip-next-btn" title="Next tip">↻</button>
             </div>
         </main>
 
         <!-- BMI Calculator Section -->
-        <main id="bmi-section" class="view-section" style="display: none;">
+        <main id="bmi-section" class="view-section" style="display: none;" aria-label="BMI Calculator">
             <div class="tool-container">
                 <h2>BMI Calculator</h2>
                 <div class="input-group">
-                    <label>Weight (kg)</label>
+                    <label for="bmi-weight">Weight (kg)</label>
                     <input type="number" id="bmi-weight" placeholder="e.g. 70">
                 </div>
                 <div class="input-group">
-                    <label>Height (cm)</label>
+                    <label for="bmi-height">Height (cm)</label>
                     <input type="number" id="bmi-height" placeholder="e.g. 175">
                 </div>
                 <button id="calc-bmi-btn" class="primary-btn">Calculate</button>
-                <div id="bmi-result" class="result-box" style="display: none;"></div>
+                <div id="bmi-result" class="result-box" style="display: none;" aria-live="polite"></div>
             </div>
         </main>
 
         <!-- Emergency Contacts Section -->
-        <main id="emergency-section" class="view-section" style="display: none;">
+        <main id="emergency-section" class="view-section" style="display: none;" aria-label="Emergency Contacts">
             <div class="tool-container">
                 <h2>Emergency Contacts</h2>
                 <div class="contact-list">
@@ -169,9 +256,9 @@
         </main>
 
         <!-- Calm Zone / Breathing Section -->
-        <main id="breathe-section" class="view-section" style="display: none;">
+        <main id="breathe-section" class="view-section" style="display: none;" aria-label="Breathing Exercise">
             <div class="breathe-container">
-                <h2 id="breathe-instruction">Tap Start to Begin</h2>
+                <h2 id="breathe-instruction" aria-live="polite">Tap Start to Begin</h2>
                 <div class="breathe-circle-wrapper">
                     <div class="breathe-circle" id="breathe-circle">
                         <span id="breathe-timer"></span>
@@ -182,7 +269,7 @@
         </main>
 
         <!-- Water Intake Tracker Section -->
-        <main id="water-section" class="view-section" style="display: none;">
+        <main id="water-section" class="view-section" style="display: none;" aria-label="Water Tracker">
             <div class="tool-container">
                 <h2>💧 Water Intake Tracker</h2>
                 <p style="color: var(--text-muted); font-size: 0.9rem;">Stay hydrated! Aim for 8 glasses a day.</p>
@@ -208,24 +295,24 @@
                 </div>
                 <button class="secondary-btn" id="water-reset">↻ Reset Today</button>
                 
-                <div id="water-motivation" style="color: var(--text-muted); font-size: 0.9rem; text-align: center; min-height: 24px;"></div>
+                <div id="water-motivation" style="color: var(--text-muted); font-size: 0.9rem; text-align: center; min-height: 24px;" aria-live="polite"></div>
             </div>
         </main>
         
         <!-- Symptom Journal Section -->
-        <main id="symptom-section" class="view-section" style="display: none;">
+        <main id="symptom-section" class="view-section" style="display: none;" aria-label="Symptom Journal">
             <div class="tool-container" style="padding: 20px;">
                 <h2>📋 Symptom Journal</h2>
                 <p style="color: var(--text-muted); font-size: 0.9rem;">Track your symptoms daily to identify patterns.</p>
                 
                 <div style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px;">
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <label style="color: var(--text-muted); min-width: 60px;">Date:</label>
+                        <label for="symptom-date" style="color: var(--text-muted); min-width: 60px;">Date:</label>
                         <input type="date" id="symptom-date" style="flex: 1; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 10px; color: white; font-size: 0.95rem;">
                     </div>
                     
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <label style="color: var(--text-muted); min-width: 60px;">Severity:</label>
+                        <label for="symptom-severity" style="color: var(--text-muted); min-width: 60px;">Severity:</label>
                         <div style="flex: 1; display: flex; gap: 5px;">
                             <span style="color: var(--text-muted); font-size: 0.8rem;">Mild</span>
                             <input type="range" id="symptom-severity" min="1" max="5" value="3" style="flex: 1;">
@@ -235,12 +322,12 @@
                     </div>
                     
                     <div>
-                        <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Symptoms (comma separated):</label>
+                        <label for="symptom-input" style="color: var(--text-muted); display: block; margin-bottom: 5px;">Symptoms (comma separated):</label>
                         <input type="text" id="symptom-input" placeholder="e.g. headache, fatigue, fever" style="width: 100%; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 12px; color: white; font-size: 0.95rem;">
                     </div>
                     
                     <div>
-                        <label style="color: var(--text-muted); display: block; margin-bottom: 5px;">Notes:</label>
+                        <label for="appt-notes" style="color: var(--text-muted); display: block; margin-bottom: 5px;">Notes:</label>
                         <textarea id="symptom-notes" rows="2" placeholder="Any additional notes..." style="width: 100%; background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 12px; color: white; font-size: 0.95rem; resize: vertical; font-family: inherit;"></textarea>
                     </div>
                     
@@ -257,26 +344,26 @@
         </main>
         
         <!-- Medicine Reminder Section -->
-        <main id="medicine-section" class="view-section" style="display: none;">
+        <main id="medicine-section" class="view-section" style="display: none;" aria-label="Medicine Reminders">
             <div class="tool-container" style="padding: 20px;">
                 <h2>💊 Medicine Reminder</h2>
                 <p style="color: var(--text-muted); font-size: 0.9rem;">Never miss a dose! Set reminders for your medications.</p>
                 
                 <div style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px;">
                     <div class="input-group">
-                        <label>Medicine Name</label>
+                        <label for="med-name">Medicine Name</label>
                         <input type="text" id="med-name" placeholder="e.g. Paracetamol">
                     </div>
                     <div class="input-group">
-                        <label>Dosage</label>
+                        <label for="med-dosage">Dosage</label>
                         <input type="text" id="med-dosage" placeholder="e.g. 500mg, 1 tablet">
                     </div>
                     <div class="input-group">
-                        <label>Time</label>
+                        <label for="appt-time">Time</label>
                         <input type="time" id="med-time" value="08:00">
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <label style="color: var(--text-muted);">Notify me</label>
+                        <label for="med-notify" style="color: var(--text-muted);">Notify me</label>
                         <label class="toggle-switch">
                             <input type="checkbox" id="med-notify" checked>
                             <span class="toggle-slider"></span>
@@ -299,7 +386,7 @@
             <div class="tool-container" style="padding: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 400px;">
                     <h2>👥 Login History</h2>
-                    <button id="refresh-logins-btn" class="secondary-btn" style="padding: 6px 14px; font-size: 0.8rem;">↻ Refresh</button>
+                    <button aria-label="Refresh login history" id="refresh-logins-btn" class="secondary-btn" style="padding: 6px 14px; font-size: 0.8rem;">↻ Refresh</button>
                 </div>
                 <p style="color: var(--text-muted); font-size: 0.85rem; width: 100%; max-width: 400px;">Track who signs in to Health Mummy.</p>
                 
@@ -418,9 +505,92 @@
             </div>
         </main>
         
+        <!-- Hospital Map Section -->
+        <main id="hospital-map-section" class="view-section" style="display: none;">
+            <div class="map-header">
+                <div class="map-header-left">
+                    <h2>🏥 Nearby Hospitals</h2>
+                    <span id="map-location-status" class="map-status" aria-live="polite">📍 Detecting your location...</span>
+                </div>
+                <div class="map-header-right">
+                    <select id="map-radius-select" class="map-radius-select" title="Search radius">
+                        <option value="2000">2 km</option>
+                        <option value="5000" selected>5 km</option>
+                        <option value="10000">10 km</option>
+                        <option value="30000">30 km</option>
+                    </select>
+                    <button id="map-refresh-btn" class="map-refresh-btn" title="Refresh map">↻</button>
+                </div>
+            </div>
+            <div id="hospital-map" class="hospital-map-container"></div>
+            <div id="hospital-results" class="hospital-results">
+                <p class="hospital-results-placeholder">🔍 Searching for nearby hospitals...</p>
+            </div>
+        </main>
+
+        <!-- Injury Camera Analysis Section -->
+        <main id="injury-section" class="view-section" style="display: none;" aria-label="Injury Analysis">
+            <div class="injury-container">
+                <h2>📷 Injury Photo Analysis</h2>
+                <p class="injury-subtitle">Can't describe your injury? Take a photo and let AI analyze it for first aid guidance</p>
+
+                <!-- Camera View -->
+                <div class="camera-wrapper" id="camera-wrapper">
+                    <video id="camera-feed" autoplay playsinline></video>
+                    <div class="camera-placeholder" id="camera-placeholder">
+                        <div class="camera-placeholder-icon">📷</div>
+                        <p>Tap below to open your camera</p>
+                    </div>
+                </div>
+
+                <!-- Captured Photo Preview -->
+                <div class="photo-preview" id="photo-preview" style="display: none;">
+                    <img id="captured-photo" alt="Captured injury photo">
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="injury-actions" id="injury-actions">
+                    <button class="secondary-btn" id="retake-btn" style="display: none;">↻ Retake Photo</button>
+                    <button class="primary-btn" id="open-camera-btn">📸 Open Camera</button>
+                    <button class="primary-btn" id="capture-btn" style="display: none;">📸 Capture Photo</button>
+                    <button class="analyze-btn" id="analyze-btn" style="display: none;">🔍 Analyze with AI</button>
+                </div>
+
+                <!-- Analysis Results -->
+                <div class="analysis-results" id="analysis-results" style="display: none;">
+                    <div class="analysis-loading" id="analysis-loading">
+                        <div class="analysis-spinner"></div>
+                        <p>🧠 AI is analyzing your injury...</p>
+                        <p class="analysis-loading-sub">Examining the photo for visible symptoms</p>
+                    </div>
+                    <div class="analysis-content" id="analysis-content" style="display: none;" aria-live="polite">
+                        <div class="analysis-card analysis-card-cause">
+                            <div class="analysis-card-icon">🤕</div>
+                            <h3>How It May Have Occurred</h3>
+                            <p id="analysis-cause"></p>
+                        </div>
+                        <div class="analysis-card analysis-card-precautions">
+                            <div class="analysis-card-icon">🛡️</div>
+                            <h3>Precautions to Take</h3>
+                            <p id="analysis-precautions"></p>
+                        </div>
+                        <div class="analysis-card analysis-card-firstaid">
+                            <div class="analysis-card-icon">🩹</div>
+                            <h3>Recommended First Aid</h3>
+                            <p id="analysis-firstaid"></p>
+                        </div>
+                        <div class="analysis-disclaimer">
+                            ⚠️ This is AI-generated guidance based on the visible appearance of the injury — always consult a healthcare professional for proper medical diagnosis and treatment.
+                        </div>
+                        <button class="secondary-btn" id="new-analysis-btn">📸 Analyze Another Injury</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
         <!-- Chat Section -->
-        <main id="chat-section" class="chat-container view-section" style="display: none;">
-            <div id="chat-box" class="chat-box">
+        <main id="chat-section" class="chat-container view-section" style="display: none;" aria-label="Health Chat">
+            <div id="chat-box" class="chat-box" aria-live="polite">
                 <div class="message bot-message">
                     Hello! I'm your Health Assistant. Tell me how you're feeling today or ask me a health-related question.
                 </div>
@@ -435,6 +605,79 @@
             </div>
         </main>
     </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal-overlay" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+        <div id="auth-modal" class="auth-modal">
+            <button class="auth-close-btn" id="auth-close-btn">&times;</button>
+            <div id="login-form">
+                <h2 id="auth-modal-title">Welcome Back</h2>
+                <p class="auth-subtitle">Sign in to your Health Mummy account</p>
+                <div class="input-group"><label for="login-email">Email</label><input type="email" id="login-email" placeholder="your@email.com"><span class="field-error" id="login-email-error"></span></div>
+                <div class="input-group"><label for="login-password">Password</label><input type="password" id="login-password" placeholder="Enter your password"><button type="button" class="pwd-toggle-btn" aria-label="Show password" tabindex="-1"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><span class="field-error" id="login-password-error"></span></div>
+                <button id="login-submit-btn" class="primary-btn" style="width:100%;margin-top:10px;">Sign In</button>
+                <p class="auth-switch">Dont have an account? <a href="#" id="show-register-link">Register</a></p>
+                <p class="auth-guest"><a href="#" id="guest-login-link">Continue as Guest</a></p>
+            </div>
+            <div id="register-form" style="display:none;">
+                <h2 id="reg-modal-title">Create Account</h2>
+                <p class="auth-subtitle">Join Health Mummy today</p>
+                <div class="input-group"><label for="reg-name">Full Name</label><input type="text" id="reg-name" placeholder="Your name"><span class="field-error" id="reg-name-error"></span></div>
+                <div class="input-group"><label for="reg-email">Email</label><input type="email" id="reg-email" placeholder="your@email.com"><span class="field-error" id="reg-email-error"></span></div>
+                <div class="input-group"><label for="reg-password">Password</label><input type="password" id="reg-password" placeholder="Password (min 8, upper, number, special)"><button type="button" class="pwd-toggle-btn" aria-label="Show password" tabindex="-1"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><span class="field-error" id="reg-password-error"></span></div><div class="pwd-strength-meter" id="pwd-strength-meter" style="display:none;" role="status" aria-live="polite" aria-atomic="true"><div class="pwd-meter-bar"><div class="pwd-meter-segment" id="pwd-seg-0"></div><div class="pwd-meter-segment" id="pwd-seg-1"></div><div class="pwd-meter-segment" id="pwd-seg-2"></div><div class="pwd-meter-segment" id="pwd-seg-3"></div></div><div class="pwd-meter-label" id="pwd-meter-label">Strength: Weak</div><ul class="pwd-requirements"><li id="pwd-req-length"><span class="pwd-req-icon">○</span> At least 8 characters</li><li id="pwd-req-upper"><span class="pwd-req-icon">○</span> One uppercase letter</li><li id="pwd-req-number"><span class="pwd-req-icon">○</span> One number</li><li id="pwd-req-special"><span class="pwd-req-icon">○</span> One special character</li></ul></div>
+                <div class="input-group"><label for="reg-confirm">Confirm Password</label><input type="password" id="reg-confirm" placeholder="Confirm password"><button type="button" class="pwd-toggle-btn" aria-label="Show password" tabindex="-1"><svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button><span class="field-error" id="reg-confirm-error"></span></div>
+                <button id="register-submit-btn" class="primary-btn" style="width:100%;margin-top:10px;">Create Account</button>
+                <p class="auth-switch">Already have an account? <a href="#" id="show-login-link">Sign In</a></p>
+                <p class="auth-guest"><a href="#" id="guest-login-link2">Continue as Guest</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Appointment Section -->
+    <main id="appointment-section" class="view-section" style="display:none;" aria-label="Appointments">
+        <div class="tool-container">
+            <h2>&#x1f4c5; My Appointments</h2>
+            <p style="color:var(--text-secondary);margin-bottom:20px;">Schedule and manage your health visits</p>
+            <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+                <button id="show-add-appointment-btn" class="primary-btn">+ New Appointment</button>
+                <button id="show-upcoming-btn" onclick="apptFilter='upcoming';renderAppointments()" style="background:var(--accent);color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;">Upcoming</button>
+                <button id="show-past-btn" onclick="apptFilter='past';renderAppointments()" style="background:var(--card-bg);color:var(--text);border:1px solid var(--border);padding:8px 16px;border-radius:8px;cursor:pointer;">Past</button>
+            </div>
+            <div id="add-appointment-form" style="display:none;background:var(--card-bg);padding:20px;border-radius:12px;margin-bottom:20px;">
+                <h3 style="margin-bottom:15px;">New Appointment</h3>
+                <div class="input-group"><label for="appt-doctor">Doctor</label><select id="appt-doctor" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);"><option value="">Select...</option><option>General Physician</option><option>Cardiologist</option><option>Dermatologist</option><option>Orthopedic</option><option>Pediatrician</option><option>Gynecologist</option><option>Ophthalmologist</option><option>Dentist</option><option>Psychiatrist</option><option>Nutritionist</option></select><span class="field-error" id="appt-doctor-error"></span></div>
+                <div class="input-group"><label for="appt-date">Date</label><input type="date" id="appt-date" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);"><span class="field-error" id="appt-date-error"></span></div>
+                <div class="input-group"><label for="med-time">Time</label><input type="time" id="appt-time" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);"><span class="field-error" id="appt-time-error"></span></div>
+                <div class="input-group"><label for="symptom-notes">Notes</label><textarea id="appt-notes" placeholder="Brief description..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);min-height:60px;"></textarea></div>
+                <button id="save-appointment-btn" class="primary-btn">Save Appointment</button>
+                <button id="cancel-appointment-btn" onclick="document.getElementById('add-appointment-form').style.display='none'" style="margin-left:10px;padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;">Cancel</button>
+            </div>
+            <div id="appointment-list"><p style="color:var(--text-secondary);text-align:center;padding:40px 0;">Loading appointments...</p></div>
+        </div>
+    </main>
+
+    <!-- Profile Section -->
+    <main id="profile-section" class="view-section" style="display:none;" aria-label="Profile Settings">
+        <div class="tool-container">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
+                <div style="width:64px;height:64px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:28px;color:white;">&#x1f464;</div>
+                <div><h2 id="profile-display-name" style="margin:0;">User</h2><p id="profile-display-email" style="color:var(--text-secondary);margin:4px 0 0 0;">user@email.com</p></div>
+            </div>
+            <div id="profile-settings" style="background:var(--card-bg);border-radius:12px;padding:20px;margin-bottom:16px;">
+                <h3 style="margin-bottom:15px;">Account Settings</h3>
+                <div class="input-group"><label for="profile-name">Full Name</label><input type="text" id="profile-name" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);"><span class="field-error" id="profile-name-error"></span></div>
+                <div class="input-group"><label for="profile-email">Email</label><input type="email" id="profile-email" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);"><span class="field-error" id="profile-email-error"></span></div>
+                <div class="input-group"><label for="profile-phone">Phone</label><input type="tel" id="profile-phone" placeholder="Optional" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);"><span class="field-error" id="profile-phone-error"></span></div>
+                <div class="input-group"><label for="profile-dob">Date of Birth</label><input type="date" id="profile-dob" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);"></div>
+                <button id="save-profile-btn" class="primary-btn" style="margin-top:10px;">Save Changes</button>
+            </div>
+            <div style="background:var(--card-bg);border-radius:12px;padding:20px;margin-bottom:16px;">
+                <h3 style="margin-bottom:15px;">Account</h3>
+                <p style="color:var(--text-secondary);margin-bottom:15px;" id="profile-account-type">Account Type: Guest</p>
+                <button id="profile-logout-btn" style="background:#e74c3c;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600;">Sign Out</button>
+            </div>
+        </div>
+    </main>
 
     <script src="config.js"></script>
     <script src="script.js"></script>
